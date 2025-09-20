@@ -11,12 +11,12 @@ export const login = async (req: Request, res: Response) => {
   }
 
   try {
-    const success = await loginUser(loginId, password);
+    const result = await loginUser(loginId, password);
 
-    if (success) {
-      return res.status(200).json({ message: "Login successful." });
+    if (result.status) {
+      return res.status(200).json({ message: result.message });
     } else {
-      return res.status(401).json({ message: "Invalid email or password." });
+      return res.status(401).json({ message: result.message });
     }
   } catch (err: any) {
     return res

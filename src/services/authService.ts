@@ -5,7 +5,7 @@ export const loginUser = async (
   password: string,
 ): Promise<{ status: boolean; message: string }> => {
   // should be a valid loginId
-  //
+  // return appropriate message
   return { status: true, message: "works" };
 };
 
