@@ -15,14 +15,16 @@ import {
 import { OrderStatus } from "@prisma/client";
 export const createManufacturingOrder = async (req: Request, res: Response) => {
   try {
-    const { userId, productId, quantity, scheduleStartDate, deadline } = req.body;
+    const { userId, quantity, scheduleStartDate, deadline } = req.body;
     
     // Use userId from body, or fallback to authenticated user ID, or default to 10
     const createdById = userId || req.userId || 10;
 
+    // Always create a new empty product and attach it to the MO
     const mo = await createManufacturingOrderService(
       createdById,
-      productId,
+      undefined, // no existing productId
+      { name: "", description: "", unit: "unit" }, // empty product data
       quantity,
       scheduleStartDate,
       deadline
@@ -356,53 +358,4 @@ export const getBOMPopulation = async (req: Request, res: Response) => {
   }
 };
 
-// Enhanced MO creation with automatic BOM population
-export const createManufacturingOrderWithBOM = async (req: Request, res: Response) => {
-  try {
-    const { 
-      userId, 
-      productId, 
-      quantity, 
-      scheduleStartDate, 
-      deadline,
-      assignedToId 
-    } = req.body;
-    
-    // Use userId from body, or fallback to authenticated user ID, or default to 1
-    const createdById = userId || req.userId || 1;
 
-    if (!productId) {
-      return res.status(400).json({
-        success: false,
-        message: "Product ID is required"
-      });
-    }
-
-    if (!quantity || quantity <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid quantity is required"
-      });
-    }
-
-    const result = await createManufacturingOrderWithBOMService(
-      createdById,
-      productId,
-      quantity,
-      scheduleStartDate,
-      deadline,
-      assignedToId
-    );
-
-    res.status(201).json({ 
-      success: true, 
-      data: result,
-      message: `Manufacturing Order created with ${result.workOrdersCreated} work orders from BOM`
-    });
-  } catch (error: any) {
-    if (error.message === 'Product not found') {
-      return res.status(404).json({ success: false, message: error.message });
-    }
-    res.status(400).json({ success: false, message: error.message });
-  }
-};

@@ -6,6 +6,12 @@ import { PDFService } from '../services/pdfService';
 export interface ReportGenerationRequest {
   reportType: ReportType;
   userId: number;
+  filters?: {
+    start?: string;
+    end?: string;
+    productId?: number;
+    moId?: number;
+  };
 }
 
 export interface ReportResponse {
@@ -37,7 +43,7 @@ export class ReportController {
   async generateReport(req: Request, res: Response): Promise<void> {
     try {
       // Validate request body
-      const { reportType, userId } = req.body as ReportGenerationRequest;
+      const { reportType, userId, filters } = req.body as ReportGenerationRequest;
       
       if (!reportType || !userId) {
         res.status(400).json({
@@ -75,12 +81,18 @@ export class ReportController {
       const reportRequest: ReportRequest = { reportType, userId };
       const reportData = await this.reportService.generateReport(reportRequest);
 
+      // Prepare dataset for BI PDF
+  const dataset = await this.buildDataset(reportData.period.start, reportData.period.end, filters);
+
       // Save report to database
       const reportId = await this.reportService.saveReport(reportData, userId);
 
       // Generate PDF
       console.log(`Generating PDF for report ${reportId}...`);
-      const pdfBuffer = await this.pdfService.generatePDF(reportData);
+      const pdfOptions: any = { company: { name: 'NMIT' }, dataset };
+      if (filters) pdfOptions.filters = filters;
+      if (user) pdfOptions.user = { id: user.id, name: user.name, email: (user as any).email };
+      const pdfBuffer = await this.pdfService.generatePDF(reportData, pdfOptions);
       const pdfBase64 = this.pdfService.convertToPDFBase64(pdfBuffer);
 
       // Send response
@@ -256,9 +268,13 @@ export class ReportController {
         return;
       }
 
-      // Generate PDF from stored report data
+      // Generate PDF from stored report data + fresh dataset (current DB state)
       const reportData = report.data as any;
-      const pdfBuffer = await this.pdfService.generatePDF(reportData);
+      const user = await this.prisma.user.findUnique({ where: { id: report.userId } });
+      const dataset = await this.buildDataset(reportData.period.start, reportData.period.end);
+      const pdfOptions: any = { company: { name: 'NMIT' }, dataset };
+      if (user) pdfOptions.user = { id: user.id, name: user.name, email: (user as any).email };
+      const pdfBuffer = await this.pdfService.generatePDF(reportData, pdfOptions);
       const pdfBase64 = this.pdfService.convertToPDFBase64(pdfBuffer);
 
       res.status(200).json({
@@ -347,7 +363,7 @@ export class ReportController {
   async generateDirectPDF(req: Request, res: Response): Promise<void> {
     try {
       // Validate request body
-      const { reportType, userId } = req.body as ReportGenerationRequest;
+  const { reportType, userId, filters } = req.body as ReportGenerationRequest;
       
       if (!reportType || !userId) {
         res.status(400).json({
@@ -390,7 +406,11 @@ export class ReportController {
 
       // Generate PDF
       console.log(`Generating PDF for report ${reportId}...`);
-      const pdfBuffer = await this.pdfService.generatePDF(reportData);
+      const dataset = await this.buildDataset(reportData.period.start, reportData.period.end, filters);
+      const pdfOptions: any = { company: { name: 'NMIT' }, dataset };
+      if (filters) pdfOptions.filters = filters;
+      pdfOptions.user = { id: user.id, name: user.name, email: (user as any).email };
+      const pdfBuffer = await this.pdfService.generatePDF(reportData, pdfOptions);
 
       // Set headers for PDF download
       const filename = `${reportType}-report-${new Date().toISOString().split('T')[0]}.pdf`;
@@ -510,5 +530,69 @@ export class ReportController {
         message: error instanceof Error ? error.message : 'Unknown error occurred',
       });
     }
+  }
+  private async buildDataset(startISO: string, endISO: string, filters?: { start?: string; end?: string; productId?: number; moId?: number }): Promise<any> {
+    const start = new Date(filters?.start || startISO);
+    const end = new Date(filters?.end || endISO);
+
+    const orders = await this.prisma.manufacturingOrder.findMany({
+      where: {
+        AND: [
+          { createdAt: { gte: start, lte: end } },
+          filters?.productId ? { productId: filters.productId } : {},
+          filters?.moId ? { id: filters.moId } : {},
+        ],
+      },
+      include: {
+        product: true,
+        assignedTo: { select: { id: true, name: true } },
+        workOrders: {
+          include: {
+            workCenter: true,
+            assignedTo: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    const workCenters = await this.prisma.workCenter.findMany({
+      include: {
+        workOrders: {
+          where: {
+            OR: [
+              { createdAt: { gte: start, lte: end } },
+              { startedAt: { gte: start, lte: end } },
+              { completedAt: { gte: start, lte: end } },
+            ],
+          },
+        },
+      },
+    });
+
+    const ledger = await this.prisma.productLedger.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      include: { product: true },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
+
+    const stocksRaw = await this.prisma.productStock.findMany({ include: { product: true } });
+    const stocks = stocksRaw.map((s: any) => ({ product: s.product, quantity: s.quantity }));
+
+    const productIds = Array.from(new Set(orders.map((o: any) => o.productId).filter(Boolean))) as number[];
+    const bomArgs: any = { include: { product: true, component: true } };
+    if (productIds.length) bomArgs.where = { productId: { in: productIds } };
+    const bomEntries = await this.prisma.billOfMaterial.findMany(bomArgs);
+    const bomMap = new Map<number, { product: any; components: any[] }>();
+    for (const b of bomEntries as any[]) {
+      const entry = bomMap.get(b.productId) || { product: b.product, components: [] as any[] };
+      entry.components.push({ component: b.component, quantity: b.quantity, operation: b.operation, opDurationMins: b.opDurationMins });
+      bomMap.set(b.productId, entry);
+    }
+
+    const bom = Array.from(bomMap.values());
+    return { orders, workCenters, ledger, stocks, bom };
   }
 }

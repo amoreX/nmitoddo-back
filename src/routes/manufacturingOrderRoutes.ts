@@ -8,8 +8,6 @@ import {
   deleteMO,
   getComponentAvailability,
   validateMO,
-  getBOMPopulation,
-  createManufacturingOrderWithBOM,
 } from "../controllers/manufacturingOrderController";
 import { authMiddleware } from "../middleware/authMiddleware";
 
@@ -23,7 +21,6 @@ manufacturingOrderRoutes.get("/dashboard", authMiddleware, getDashboardMOs);
 manufacturingOrderRoutes.post("/new", authMiddleware, createManufacturingOrder);
 
 // Create a new Manufacturing Order with automatic BOM population
-manufacturingOrderRoutes.post("/new-with-bom", authMiddleware, createManufacturingOrderWithBOM);
 
 // Save draft MO
 manufacturingOrderRoutes.post("/save-draft", authMiddleware, draftManufacturingOrder);

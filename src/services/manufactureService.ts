@@ -163,22 +163,82 @@ export const getDashboardKPIsService = async (): Promise<DashboardKPIs> => {
 export const createManufacturingOrderService = async (
   createdById: number,
   productId?: number,
+  productData?: { name: string; description?: string; unit?: string },
   quantity?: number,
   scheduleStartDate?: string,
   deadline?: string
-): Promise<{ id: number; status: OrderStatus; createdById: number }> => {
+) => {
+  let finalProductId = productId;
+
+  // Always create new empty product if no productId is provided
+  if (!productId) {
+    const newProduct = await prisma.product.create({
+      data: {
+        name: productData?.name || "",
+        description: productData?.description || "",
+        unit: productData?.unit || "unit",
+      },
+    });
+    finalProductId = newProduct.id;
+  }
+
   const createData: any = { 
     status: OrderStatus.draft, 
-    createdById
+    createdById,
+    productId: finalProductId
   };
   
-  if (productId !== undefined) createData.productId = productId;
   if (quantity !== undefined) createData.quantity = quantity;
   if (scheduleStartDate) createData.scheduleStartDate = new Date(scheduleStartDate);
   if (deadline) createData.deadline = new Date(deadline);
 
   const mo = await prisma.manufacturingOrder.create({
     data: createData,
+    include: {
+      product: {
+        include: {
+          bom: {
+            include: {
+              component: {
+                select: {
+                  id: true,
+                  name: true,
+                  unit: true,
+                  description: true,
+                },
+              },
+            },
+          },
+          stock: true,
+        },
+      },
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      assignedTo: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      workOrders: {
+        include: {
+          workCenter: true,
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
   });
   return mo;
 };
@@ -1058,20 +1118,39 @@ export const getBOMPopulationService = async (productId: number): Promise<BOMPop
 // Enhanced MO creation with BOM population
 export const createManufacturingOrderWithBOMService = async (
   createdById: number,
-  productId: number,
-  quantity: number,
+  productId?: number,
+  productData?: { name: string; description?: string; unit?: string },
+  quantity?: number,
   scheduleStartDate?: string,
   deadline?: string,
   assignedToId?: number
 ) => {
+  let finalProductId = productId;
+
+  // Create new product if productData is provided and no productId
+  if (!productId && productData) {
+    const newProduct = await prisma.product.create({
+      data: {
+        name: productData.name,
+        description: productData.description || null,
+        unit: productData.unit || "unit",
+      },
+    });
+    finalProductId = newProduct.id;
+  }
+
+  if (!finalProductId) {
+    throw new Error('Product ID or product data must be provided');
+  }
+
   // Get BOM data first
-  const bomData = await getBOMPopulationService(productId);
+  const bomData = await getBOMPopulationService(finalProductId);
 
   // Create the MO
   const createData: any = {
     status: OrderStatus.draft,
     createdById,
-    productId,
+    productId: finalProductId,
     quantity,
   };
 
@@ -1083,9 +1162,43 @@ export const createManufacturingOrderWithBOMService = async (
     // Create the Manufacturing Order
     const newMO = await tx.manufacturingOrder.create({
       data: createData,
+      include: {
+        product: {
+          include: {
+            bom: {
+              include: {
+                component: {
+                  select: {
+                    id: true,
+                    name: true,
+                    unit: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+            stock: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
 
     // Create work orders based on BOM operations
+    let workOrdersCreated = 0;
     if (bomData.operations.length > 0) {
       const workOrdersToCreate = bomData.operations.map((operation) => ({
         moId: newMO.id,
@@ -1098,14 +1211,30 @@ export const createManufacturingOrderWithBOMService = async (
       await tx.workOrder.createMany({
         data: workOrdersToCreate,
       });
+      workOrdersCreated = bomData.operations.length;
     }
 
-    return newMO;
+    // Get the created work orders
+    const workOrders = await tx.workOrder.findMany({
+      where: { moId: newMO.id },
+      include: {
+        workCenter: true,
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return {
+      ...newMO,
+      workOrders,
+      workOrdersCreated,
+    };
   });
 
-  return {
-    mo,
-    bomPopulation: bomData,
-    workOrdersCreated: bomData.operations.length,
-  };
+  return mo;
 };

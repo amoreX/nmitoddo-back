@@ -24,6 +24,6 @@ apiRoutes.use("/workCenters", workCenterRoutes);
 apiRoutes.use("/moPresets", moPresetsRoutes);
 apiRoutes.use("/stock", stockRoutes); 
 apiRoutes.use("/products", productRoutes); 
-apiRoutes.use("/reports", reportRoutes); 
+// apiRoutes.use("/reports", reportRoutes); 
 
 export default apiRoutes;
