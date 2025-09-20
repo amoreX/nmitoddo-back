@@ -76,15 +76,15 @@ model BillOfMaterial {
 
 model ManufacturingOrder {
   id          Int       @id @default(autoincrement())
-  quantity    Int
+  quantity    Int?
   scheduleStartDate DateTime?
   deadline    DateTime?
   status      OrderStatus
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
-  productId Int
-  product   Product @relation(fields: [productId], references: [id])
+  productId Int?
+  product   Product? @relation(fields: [productId], references: [id])
 
   createdById Int
   createdBy   User @relation("CreatedBy", fields: [createdById], references: [id])
