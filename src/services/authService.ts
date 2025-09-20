@@ -6,6 +6,12 @@ export const loginUser = async (
 ): Promise<{ status: boolean; message: string }> => {
   // should be a valid loginId
   // return appropriate message
+  const user = await prisma.user.findUnique({
+    where: {
+      email: "bob@example.com",
+    },
+  });
+  console.log("here data:", user);
   return { status: true, message: "works" };
 };
 
