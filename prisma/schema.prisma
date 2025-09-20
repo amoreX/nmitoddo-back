@@ -112,7 +112,9 @@ model WorkOrder {
   startedAt   DateTime?
   completedAt DateTime?
   createdAt   DateTime @default(now())
-
+  durationMins Int
+  durationDoneMins Int @default(0)
+  
   moId Int
   mo   ManufacturingOrder @relation(fields: [moId], references: [id], onDelete: Cascade)
 
