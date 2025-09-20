@@ -38,7 +38,7 @@ export const createManufacturingOrder = async (req: Request, res: Response) => {
 
 export const draftManufacturingOrder = async (req: Request, res: Response) => {
   try {
-    // Destructure fields (BOM components auto-derived but can be modified)
+    // Destructure fields with new ID-first approach
     const {
       id,
       userId, // Creator of the MO  
@@ -48,8 +48,11 @@ export const draftManufacturingOrder = async (req: Request, res: Response) => {
       scheduleStartDate,
       deadline,
       assignedToId,
-      bomComponents, // Optional - Modified BOM components from frontend
-      workOrders, // Array of { operation, assignedToId, workCenterId, durationMins, comments }
+      bomComponents, // New ID-first approach: { bomIds: [], updates: [] }
+      workOrders, // New ID-first approach: { workOrderIds: [], newWorkOrders: [] }
+      // Legacy support
+      bomIds, // Simple array of BOM IDs
+      workOrderIds, // Simple array of Work Order IDs
       status, // Optional, default to draft
     } = req.body;
 
@@ -68,8 +71,10 @@ export const draftManufacturingOrder = async (req: Request, res: Response) => {
       productId,
       product, // Optional product field updates
       quantity,
-      bomComponents, // Modified BOM components (if any)
-      workOrders,
+      bomComponents, // New ID-first approach
+      workOrders, // New ID-first approach
+      bomIds, // Legacy support
+      workOrderIds, // Legacy support
       status: status || "draft",
     };
 

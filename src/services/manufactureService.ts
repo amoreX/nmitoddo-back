@@ -305,43 +305,117 @@ export const saveDraftManufacturingOrderService = async (
     },
   });
 
-  // Handle BOM component updates if provided
-  if (moData.bomComponents && moData.bomComponents.length > 0) {
-    for (const bomUpdate of moData.bomComponents) {
-      // Update existing BOM entry
-      await prisma.billOfMaterial.update({
-        where: { id: bomUpdate.id },
-        data: {
-          componentId: bomUpdate.componentId,
-          quantity: bomUpdate.quantity,
-          operation: bomUpdate.operation || null,
-          opDurationMins: bomUpdate.opDurationMins || null,
+  // Handle BOM components - ID-first approach with fallback
+  if (moData.bomComponents) {
+    // Handle BOM ID associations (primary approach)
+    if (moData.bomComponents.bomIds && moData.bomComponents.bomIds.length > 0) {
+      // Validate BOM IDs exist and belong to the product
+      const validBomIds = await prisma.billOfMaterial.findMany({
+        where: { 
+          id: { in: moData.bomComponents.bomIds },
+          productId: moData.productId 
         },
+        select: { id: true }
       });
+      
+      if (validBomIds.length !== moData.bomComponents.bomIds.length) {
+        throw new Error("Some BOM IDs are invalid or don't belong to the specified product");
+      }
+      
+      // BOM entries are already associated with the product, no additional work needed
+      // The relationship is inherent through productId
+    }
+    
+    // Handle BOM updates (fallback for modifications)
+    if (moData.bomComponents.updates && moData.bomComponents.updates.length > 0) {
+      for (const bomUpdate of moData.bomComponents.updates) {
+        await prisma.billOfMaterial.update({
+          where: { id: bomUpdate.id },
+          data: {
+            componentId: bomUpdate.componentId,
+            quantity: bomUpdate.quantity,
+            operation: bomUpdate.operation || null,
+            opDurationMins: bomUpdate.opDurationMins || null,
+          },
+        });
+      }
     }
   }
 
-  // Handle work orders if provided
-  if (moData.workOrders && moData.workOrders.length > 0) {
-    // Delete existing work orders for this MO
-    await prisma.workOrder.deleteMany({
-      where: { moId: mo.id }
+  // Legacy support for simple bomIds array
+  if (moData.bomIds && moData.bomIds.length > 0) {
+    const validBomIds = await prisma.billOfMaterial.findMany({
+      where: { 
+        id: { in: moData.bomIds },
+        productId: moData.productId 
+      },
+      select: { id: true }
     });
+    
+    if (validBomIds.length !== moData.bomIds.length) {
+      throw new Error("Some BOM IDs are invalid or don't belong to the specified product");
+    }
+  }
 
-    // Create new work orders
-    for (const woData of moData.workOrders) {
-      await prisma.workOrder.create({
-        data: {
-          moId: mo.id,
-          operation: woData.operation,
-          status: woData.status || "to_do",
-          durationMins: woData.durationMins,
-          comments: woData.comments || null,
-          workCenterId: woData.workCenterId || null,
-          assignedToId: woData.assignedToId || null,
+  // Handle work orders - ID-first approach with fallback
+  if (moData.workOrders) {
+    // Handle existing work order associations
+    if (moData.workOrders.workOrderIds && moData.workOrders.workOrderIds.length > 0) {
+      // Validate work order IDs exist
+      const validWorkOrders = await prisma.workOrder.findMany({
+        where: { 
+          id: { in: moData.workOrders.workOrderIds }
         },
+        select: { id: true, moId: true }
+      });
+      
+      if (validWorkOrders.length !== moData.workOrders.workOrderIds.length) {
+        throw new Error("Some Work Order IDs are invalid");
+      }
+      
+      // Update work orders to associate with this MO
+      await prisma.workOrder.updateMany({
+        where: { id: { in: moData.workOrders.workOrderIds } },
+        data: { moId: mo.id }
       });
     }
+    
+    // Handle new work order creation
+    if (moData.workOrders.newWorkOrders && moData.workOrders.newWorkOrders.length > 0) {
+      for (const woData of moData.workOrders.newWorkOrders) {
+        await prisma.workOrder.create({
+          data: {
+            moId: mo.id,
+            operation: woData.operation,
+            status: woData.status || "to_do",
+            durationMins: woData.durationMins,
+            comments: woData.comments || null,
+            workCenterId: woData.workCenterId || null,
+            assignedToId: woData.assignedToId || null,
+          },
+        });
+      }
+    }
+  }
+
+  // Legacy support for simple workOrderIds array
+  if (moData.workOrderIds && moData.workOrderIds.length > 0) {
+    const validWorkOrders = await prisma.workOrder.findMany({
+      where: { 
+        id: { in: moData.workOrderIds }
+      },
+      select: { id: true }
+    });
+    
+    if (validWorkOrders.length !== moData.workOrderIds.length) {
+      throw new Error("Some Work Order IDs are invalid");
+    }
+    
+    // Associate work orders with this MO
+    await prisma.workOrder.updateMany({
+      where: { id: { in: moData.workOrderIds } },
+      data: { moId: mo.id }
+    });
   }
 
   // Fetch the complete MO with all related data before returning
@@ -418,12 +492,24 @@ interface WorkOrderInput {
   durationDoneMins?: number;
 }
 
+// BOM handling - ID-first approach with fallback for updates
+interface BOMComponentsInput {
+  bomIds?: number[];              // Existing BOM entry IDs to associate
+  updates?: BOMUpdateInput[];     // Specific BOM updates (for modified quantities/operations)
+}
+
 interface BOMUpdateInput {
   id: number; // BOM entry ID
   componentId: number;
   quantity: number;
   operation?: string;
   opDurationMins?: number;
+}
+
+// Work Order handling - ID-first approach with fallback for new ones
+interface WorkOrdersInput {
+  workOrderIds?: number[];        // Existing work order IDs to associate
+  newWorkOrders?: WorkOrderInput[]; // New work orders to create
 }
 
 interface MODraftInput {
@@ -439,8 +525,17 @@ interface MODraftInput {
   scheduleStartDate?: Date;
   deadline?: Date;
   assignedToId?: number;
-  bomComponents?: BOMUpdateInput[]; // Modified BOM components from frontend
-  workOrders?: WorkOrderInput[];
+  
+  // ID-first approach for BOM components
+  bomComponents?: BOMComponentsInput;
+  
+  // ID-first approach for work orders  
+  workOrders?: WorkOrdersInput;
+  
+  // Legacy support - for backward compatibility
+  bomIds?: number[];           // Simple array of BOM IDs (alternative)
+  workOrderIds?: number[];     // Simple array of Work Order IDs (alternative)
+  
   status: string;
 }
 
