@@ -14,7 +14,9 @@ export const login = async (req: Request, res: Response) => {
     const result = await loginUser(loginId, password);
 
     if (result.status) {
-      return res.status(200).json({ message: result.message });
+      return res
+        .status(200)
+        .json({ message: result.message, user: result.user });
     } else {
       return res.status(401).json({ message: result.message });
     }
