@@ -1,0 +1,490 @@
+# Manufacturing Management System - Implementation Prompts
+
+## 🚨 PHASE 1: CRITICAL DASHBOARD & MO MANAGEMENT
+
+### Prompt 1: Manufacturing Orders Dashboard with Filtering
+```
+Create a comprehensive Manufacturing Orders dashboard API with the following features:
+
+1. **GET /api/mo/dashboard** - Main dashboard endpoint
+   - Return paginated list of all MOs with filters
+   - Support query parameters: status, assignedTo, productId, dateRange, limit, offset
+   - Include product details, assigned user, work orders count, progress percentage
+   - Add search functionality by MO ID or product name
+
+2. **GET /api/mo/:id** - Get single MO with complete details
+   - Include associated work orders, BOM components, progress tracking
+   - Show stock availability for required components
+   - Calculate completion percentage based on work orders
+
+3. **PUT /api/mo/:id/status** - Update MO status
+   - Allow status transitions: draft -> confirmed -> in_progress -> done
+   - Validate status transitions (business rules)
+   - Auto-generate work orders when status moves to "confirmed"
+   - Update timestamps (startedAt, completedAt)
+
+4. **DELETE /api/mo/:id** - Cancel/Delete MO
+   - Only allow deletion of draft MOs
+   - Allow cancellation of confirmed/in_progress MOs
+   - Cleanup associated work orders
+
+Response format should match existing API patterns with proper error handling and authentication.
+```
+
+### Prompt 2: Component Availability & MO Validation
+```
+Implement component availability checking and MO validation:
+
+1. **GET /api/mo/:id/components** - Check component availability
+   - Calculate required components based on BOM and MO quantity
+   - Show current stock vs required quantity for each component
+   - Highlight shortages and availability status
+   - Include component unit costs and total material cost
+
+2. **POST /api/mo/:id/validate** - Validate MO before confirmation
+   - Check all components are available in required quantities
+   - Validate assigned work center capacity
+   - Check if assigned user has required permissions
+   - Return validation results with specific error messages
+
+3. Update existing MO creation to include automatic BOM population:
+   - When creating MO, automatically fetch BOM for selected product
+   - Pre-populate components and operations from BOM
+   - Calculate total material requirements based on MO quantity
+
+Add proper TypeScript interfaces and maintain existing code patterns.
+```
+
+## ⚡ PHASE 2: BILL OF MATERIALS (BOM) MANAGEMENT
+
+### Prompt 3: Complete BOM CRUD Operations
+```
+Implement full BOM management system:
+
+1. **POST /api/bom** - Create new BOM
+   Body: {
+     productId: number,
+     components: [
+       {
+         componentId: number,
+         quantity: number,
+         operation?: string,
+         opDurationMins?: number
+       }
+     ]
+   }
+
+2. **GET /api/bom** - List all BOMs with product details
+   - Support filtering by productId
+   - Include component details and operation info
+   - Show total material cost per BOM
+
+3. **GET /api/bom/:productId** - Get BOM for specific product
+   - Return complete BOM with all components and operations
+   - Include component stock levels
+   - Calculate total manufacturing time
+
+4. **PUT /api/bom/:productId** - Update existing BOM
+   - Allow adding/removing components
+   - Update quantities and operations
+   - Maintain BOM version history
+
+5. **DELETE /api/bom/:productId** - Delete BOM
+   - Check if BOM is used in any active MOs
+   - Soft delete with confirmation
+
+Create corresponding service methods and maintain transaction integrity.
+```
+
+### Prompt 4: BOM Templates and Presets Integration
+```
+Enhance BOM system with templates and integrate with MO Presets:
+
+1. **POST /api/bom/template** - Create BOM template
+   - Save BOM as reusable template
+   - Include template name and description
+   - Support template categories
+
+2. **GET /api/bom/templates** - List available BOM templates
+   - Support search and filtering
+   - Show template usage statistics
+
+3. **POST /api/bom/template/:id/apply** - Apply template to product
+   - Copy template BOM to specific product
+   - Allow quantity scaling
+   - Validate component availability
+
+4. Enhance MO Presets to include BOM information:
+   - Update MOPresets model to reference BOM
+   - Auto-populate BOM when creating MO from preset
+   - Include material cost estimates in presets
+
+Update existing schemas and maintain data consistency.
+```
+
+## 🔧 PHASE 3: WORK ORDER MANAGEMENT
+
+### Prompt 5: Complete Work Order System
+```
+Implement comprehensive work order management:
+
+1. **GET /api/wo** - List work orders with filtering
+   - Filter by: status, assignedTo, workCenter, moId, dateRange
+   - Include MO details, assigned user, work center info
+   - Support pagination and sorting
+
+2. **GET /api/wo/:id** - Get work order details
+   - Include complete MO context
+   - Show time tracking history
+   - Display comments and status updates
+
+3. **PUT /api/wo/:id/status** - Update work order status
+   - Support transitions: to_do -> started -> paused -> completed
+   - Auto-update timestamps (startedAt, pausedAt, completedAt)
+   - Calculate actual duration vs planned duration
+
+4. **POST /api/wo/:id/time** - Record time tracking
+   Body: {
+     action: "start" | "pause" | "resume" | "complete",
+     comments?: string,
+     actualDuration?: number
+   }
+
+5. **PUT /api/wo/:id/assign** - Assign work order to user
+   - Validate user permissions and availability
+   - Send notifications to assigned user
+   - Update assignment history
+
+Include proper validation, error handling, and maintain existing patterns.
+```
+
+### Prompt 6: Work Order Comments and Issue Tracking
+```
+Add collaborative features to work orders:
+
+1. **POST /api/wo/:id/comments** - Add comment to work order
+   Body: {
+     comment: string,
+     type: "update" | "issue" | "resolution",
+     attachments?: string[]
+   }
+
+2. **GET /api/wo/:id/comments** - Get work order comment history
+   - Include user details and timestamps
+   - Support comment types and filtering
+   - Show comment thread for issues
+
+3. **POST /api/wo/:id/issues** - Report work order issue
+   Body: {
+     title: string,
+     description: string,
+     severity: "low" | "medium" | "high" | "critical",
+     category: "quality" | "equipment" | "material" | "other"
+   }
+
+4. **PUT /api/wo/:id/issues/:issueId** - Update issue status
+   - Track issue resolution
+   - Link to corrective actions
+   - Update work order status if needed
+
+Create proper database schema updates and maintain referential integrity.
+```
+
+## 🏭 PHASE 4: WORK CENTER ENHANCEMENTS
+
+### Prompt 7: Complete Work Center Management
+```
+Enhance work center functionality:
+
+1. **GET /api/workCenters** - List all work centers
+   - Include utilization metrics
+   - Show current assignments
+   - Support filtering by location, capacity
+
+2. **GET /api/workCenters/:id** - Get work center details
+   - Include current and scheduled work orders
+   - Show capacity utilization over time
+   - Display downtime history
+
+3. **PUT /api/workCenters/:id** - Update work center
+   - Allow updating capacity, cost, location
+   - Validate impact on existing work orders
+   - Maintain change history
+
+4. **POST /api/workCenters/:id/downtime** - Record downtime
+   Body: {
+     startTime: DateTime,
+     endTime?: DateTime,
+     reason: string,
+     type: "maintenance" | "breakdown" | "setup" | "other"
+   }
+
+5. **GET /api/workCenters/:id/utilization** - Get utilization metrics
+   - Calculate utilization percentage
+   - Show efficiency metrics
+   - Include capacity vs demand analysis
+
+Implement proper scheduling logic and capacity management.
+```
+
+## 🔄 PHASE 5: END-TO-END MANUFACTURING WORKFLOW
+
+### Prompt 8: Manufacturing Order Workflow Automation
+```
+Implement complete MO to production workflow:
+
+1. **POST /api/mo/:id/confirm** - Confirm manufacturing order
+   - Validate component availability
+   - Reserve required stock quantities
+   - Auto-generate work orders from BOM operations
+   - Update MO status to "confirmed"
+   - Create stock movement records for reservations
+
+2. **POST /api/mo/:id/start** - Start manufacturing order
+   - Update status to "in_progress"
+   - Start first work order automatically
+   - Create initial stock consumption records
+   - Send notifications to assigned team
+
+3. **POST /api/mo/:id/complete** - Complete manufacturing order
+   - Validate all work orders are completed
+   - Process final stock movements (consume raw materials)
+   - Add finished goods to stock
+   - Update MO status to "done"
+   - Generate completion report
+
+4. **GET /api/mo/:id/progress** - Get real-time progress
+   - Calculate completion percentage based on work orders
+   - Show current bottlenecks and delays
+   - Include estimated completion time
+
+Ensure proper transaction handling and rollback capabilities.
+```
+
+### Prompt 9: Stock Integration with Manufacturing Flow
+```
+Complete stock management integration:
+
+1. **POST /api/mo/:id/reserve-stock** - Reserve components for MO
+   - Check availability and reserve quantities
+   - Create "reserved" status in stock ledger
+   - Handle partial reservations and backorders
+   - Send alerts for insufficient stock
+
+2. **POST /api/mo/:id/consume-stock** - Consume materials during production
+   - Update actual consumption vs planned
+   - Handle material waste and overages
+   - Update stock ledger with consumption records
+   - Track cost variances
+
+3. **POST /api/mo/:id/produce-stock** - Add finished goods to inventory
+   - Calculate produced quantity based on actual consumption
+   - Update finished goods stock
+   - Create production cost records
+   - Handle quality control holds
+
+4. **GET /api/stock/reserved** - View all reserved stock
+   - Show reservations by MO and component
+   - Include reservation dates and expiry
+   - Support reservation management
+
+Implement proper stock movement validations and audit trails.
+```
+
+## 🎛️ PHASE 6: DASHBOARD AND REPORTING ENHANCEMENTS
+
+### Prompt 10: Manufacturing Dashboard KPIs
+```
+Create comprehensive dashboard with real-time KPIs:
+
+1. **GET /api/dashboard/overview** - Main dashboard data
+   Return:
+   - Active MOs by status (planned, in_progress, delayed, completed today)
+   - Work order completion rate (today, this week)
+   - Stock alerts (low stock, out of stock, overstocked)
+   - Work center utilization summary
+   - Top products by volume this month
+   - Recent issues and alerts
+
+2. **GET /api/dashboard/charts** - Data for dashboard charts
+   - MO completion trends (last 30 days)
+   - Work center efficiency over time
+   - Stock movement trends
+   - Production vs planned capacity
+
+3. **GET /api/dashboard/alerts** - System alerts and notifications
+   - Overdue work orders
+   - Low stock warnings
+   - Equipment downtime alerts
+   - Quality issues requiring attention
+
+4. **GET /api/dashboard/kpis** - Key performance indicators
+   - Overall Equipment Effectiveness (OEE)
+   - On-time delivery percentage
+   - First-pass yield
+   - Inventory turnover
+   - Labor efficiency
+
+Structure responses for easy frontend consumption with proper caching strategies.
+```
+
+## 🎨 PHASE 7: USER EXPERIENCE ENHANCEMENTS
+
+### Prompt 11: Advanced Search and Filtering
+```
+Implement advanced search capabilities across all modules:
+
+1. **GET /api/search/global** - Global search across all entities
+   - Search MOs, WOs, products, work centers by keyword
+   - Return categorized results with relevance scoring
+   - Support advanced filters and date ranges
+
+2. **GET /api/mo/advanced-search** - Advanced MO filtering
+   Query parameters:
+   - status[], assignedTo[], productId[], workCenter[]
+   - dateCreated, dateDeadline, priority
+   - hasIssues, isOverdue, isOnSchedule
+   - stockAvailable (true/false)
+
+3. **GET /api/wo/advanced-search** - Advanced work order filtering
+   - Similar pattern for work orders with relevant filters
+   - Include duration filters (underTime, overTime, onTime)
+
+4. **POST /api/search/save-filter** - Save common filter combinations
+   - Allow users to save frequently used filter sets
+   - Name and share filter combinations
+   - Quick access to saved searches
+
+Implement efficient database queries with proper indexing suggestions.
+```
+
+### Prompt 12: Batch Operations and Bulk Actions
+```
+Add batch operations for efficiency:
+
+1. **PUT /api/mo/batch-update** - Bulk update multiple MOs
+   Body: {
+     moIds: number[],
+     updates: {
+       status?: string,
+       assignedTo?: number,
+       deadline?: DateTime,
+       priority?: string
+     }
+   }
+
+2. **POST /api/wo/batch-assign** - Bulk assign work orders
+   - Assign multiple work orders to users
+   - Consider work center capacity and user availability
+   - Validate assignments and return conflicts
+
+3. **POST /api/stock/batch-movement** - Bulk stock movements
+   - Process multiple stock movements in single transaction
+   - Support CSV import format
+   - Validate all movements before processing
+
+4. **POST /api/mo/duplicate** - Duplicate manufacturing order
+   - Create new MO based on existing one
+   - Allow quantity and date modifications
+   - Maintain BOM and work order structure
+
+Include proper transaction handling and detailed operation results.
+```
+
+## 🔒 PHASE 8: SECURITY AND PERMISSIONS
+
+### Prompt 13: Enhanced Role-Based Access Control
+```
+Implement granular permissions system:
+
+1. Create permission matrix:
+   - admin: Full access to all operations
+   - manager: MO management, WO assignment, reporting
+   - user: Limited to assigned work orders and stock viewing
+   - operator: Work order execution only
+
+2. **GET /api/permissions/user/:id** - Get user permissions
+   - Return detailed permission set for user role
+   - Include module-specific permissions
+   - Support custom permission assignments
+
+3. Add permission checks to all endpoints:
+   - Validate user can perform requested operation
+   - Check object-level permissions (assigned MOs/WOs)
+   - Return appropriate error messages
+
+4. **POST /api/permissions/check** - Batch permission checking
+   - Frontend can validate multiple permissions at once
+   - Support conditional UI rendering based on permissions
+
+Implement middleware for consistent permission checking across all routes.
+```
+
+## 📱 PHASE 9: API OPTIMIZATION AND PERFORMANCE
+
+### Prompt 14: Performance Optimization and Caching
+```
+Optimize API performance:
+
+1. Implement response caching:
+   - Cache static data (products, work centers, BOM)
+   - Cache dashboard KPIs with appropriate TTL
+   - Implement cache invalidation strategies
+
+2. Add database query optimization:
+   - Review all Prisma queries for N+1 problems
+   - Add proper database indexes
+   - Implement query result pagination
+
+3. **GET /api/health** - System health endpoint
+   - Database connection status
+   - Cache system status
+   - API response time metrics
+   - System resource usage
+
+4. Add API rate limiting:
+   - Implement rate limiting per user/IP
+   - Different limits for different user roles
+   - Proper error responses for rate limit exceeded
+
+Include monitoring and alerting recommendations.
+```
+
+## 📋 IMPLEMENTATION PRIORITY ORDER
+
+1. **Start with Phase 1** - Critical for basic functionality
+2. **Move to Phase 3** - Work order management is essential
+3. **Then Phase 2** - BOM system enables full workflow
+4. **Continue with Phase 5** - Complete the manufacturing flow
+5. **Add Phases 4,6,7** - Enhanced features and UX
+6. **Finish with Phases 8,9** - Security and optimization
+
+Each prompt is designed to be self-contained with specific requirements, expected inputs/outputs, and integration points with existing code.
+
+---
+
+## 🚀 Quick Start Commands for Each Phase
+
+```bash
+# Phase 1: Test MO dashboard
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/mo/dashboard
+
+# Phase 2: Create BOM
+curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"productId":1,"components":[{"componentId":2,"quantity":4}]}' \
+  http://localhost:3000/api/bom
+
+# Phase 3: Update work order status
+curl -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"status":"started","comments":"Beginning work"}' \
+  http://localhost:3000/api/wo/1/status
+```
+
+## 📚 Additional Resources Needed
+
+1. **Frontend Integration Examples** - Example React/Vue components for each feature
+2. **Database Migration Scripts** - For schema changes in each phase
+3. **Test Cases** - Comprehensive test suites for each implemented feature
+4. **API Documentation Updates** - Keep docs in sync with new endpoints
+
+Each phase builds upon the previous one, ensuring a cohesive and functional manufacturing management system.

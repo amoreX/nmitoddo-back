@@ -85,7 +85,7 @@ export const signupService = async (
 
     return {
       status: true,
-      message: "User created successfully",
+      message: token,
       user: userWithoutPassword,
       token
     };
@@ -163,7 +163,7 @@ export const loginService = async (
 
     return {
       status: true,
-      message: "Login successful",
+      message: token,
       user: userWithoutPassword,
       token
     };

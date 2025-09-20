@@ -1,5 +1,50 @@
 import prisma from "../prisma";
-import { OrderStatus } from "@prisma/client";
+import { OrderStatus, WorkStatus } from "@prisma/client";
+
+// Dashboard filtering interface
+interface DashboardFilters {
+  status?: OrderStatus;
+  assignedTo?: number;
+  productId?: number;
+  dateRange?: {
+    start: Date;
+    end: Date;
+  };
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+// Dashboard response interface
+interface DashboardMO {
+  id: number;
+  quantity: number | null;
+  status: OrderStatus;
+  scheduleStartDate: Date | null;
+  deadline: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  product: {
+    id: number;
+    name: string;
+    description: string | null;
+  } | null;
+  assignedTo: {
+    id: number;
+    name: string | null;
+    email: string;
+  } | null;
+  createdBy: {
+    id: number;
+    name: string | null;
+    email: string;
+  };
+  workOrdersCount: number;
+  completedWorkOrdersCount: number;
+  progressPercentage: number;
+  startedAt?: Date | null;
+  completedAt?: Date | null;
+}
 
 export const createManufacturingOrderService = async (
   createdById: number,
@@ -134,3 +179,819 @@ interface MODraftInput {
   workOrderIds?: number[]; // List of Work Order IDs to update
   status: string;
 }
+
+// Dashboard service for fetching Manufacturing Orders with filters
+export const getDashboardMOsService = async (filters: DashboardFilters) => {
+  const {
+    status,
+    assignedTo,
+    productId,
+    dateRange,
+    search,
+    limit = 10,
+    offset = 0,
+  } = filters;
+
+  // Build where conditions
+  const whereConditions: any = {};
+
+  if (status) {
+    whereConditions.status = status;
+  }
+
+  if (assignedTo) {
+    whereConditions.assignedToId = assignedTo;
+  }
+
+  if (productId) {
+    whereConditions.productId = productId;
+  }
+
+  if (dateRange) {
+    whereConditions.createdAt = {
+      gte: dateRange.start,
+      lte: dateRange.end,
+    };
+  }
+
+  // Search functionality - search by MO ID or product name
+  if (search) {
+    const searchNumber = parseInt(search);
+    whereConditions.OR = [
+      // Search by MO ID if search term is a number
+      ...(isNaN(searchNumber) ? [] : [{ id: searchNumber }]),
+      // Search by product name
+      {
+        product: {
+          name: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+      },
+    ];
+  }
+
+  const [manufacturingOrders, totalCount] = await Promise.all([
+    prisma.manufacturingOrder.findMany({
+      where: whereConditions,
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        assignedTo: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        workOrders: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      skip: offset,
+      take: limit,
+    }),
+    prisma.manufacturingOrder.count({ where: whereConditions }),
+  ]);
+
+  // Calculate progress for each MO
+  const dashboardMOs: DashboardMO[] = manufacturingOrders.map((mo) => {
+    const workOrdersCount = mo.workOrders.length;
+    const completedWorkOrdersCount = mo.workOrders.filter(
+      (wo) => wo.status === WorkStatus.completed
+    ).length;
+    const progressPercentage = workOrdersCount > 0 
+      ? Math.round((completedWorkOrdersCount / workOrdersCount) * 100) 
+      : 0;
+
+    // Calculate timestamps based on work orders
+    const startedAt = mo.workOrders.some(wo => wo.status !== WorkStatus.to_do) 
+      ? mo.updatedAt // Use updatedAt as approximation for started time
+      : null;
+    
+    const completedAt = mo.status === OrderStatus.done ? mo.updatedAt : null;
+
+    return {
+      id: mo.id,
+      quantity: mo.quantity,
+      status: mo.status,
+      scheduleStartDate: mo.scheduleStartDate,
+      deadline: mo.deadline,
+      createdAt: mo.createdAt,
+      updatedAt: mo.updatedAt,
+      product: mo.product,
+      assignedTo: mo.assignedTo,
+      createdBy: mo.createdBy,
+      workOrdersCount,
+      completedWorkOrdersCount,
+      progressPercentage,
+      startedAt,
+      completedAt,
+    };
+  });
+
+  return {
+    data: dashboardMOs,
+    pagination: {
+      total: totalCount,
+      limit,
+      offset,
+      hasNext: offset + limit < totalCount,
+      hasPrevious: offset > 0,
+    },
+  };
+};
+
+// Get single MO with detailed information
+export const getMOWithDetailsService = async (moId: number) => {
+  const mo = await prisma.manufacturingOrder.findUnique({
+    where: { id: moId },
+    include: {
+      product: {
+        include: {
+          bom: {
+            include: {
+              component: {
+                include: {
+                  stock: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      assignedTo: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      workOrders: {
+        include: {
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          workCenter: {
+            select: {
+              id: true,
+              name: true,
+              location: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      },
+    },
+  });
+
+  if (!mo) {
+    throw new Error('Manufacturing Order not found');
+  }
+
+  // Calculate component availability and requirements
+  const componentAvailability = mo.product?.bom.map((bomItem) => {
+    const requiredQuantity = (mo.quantity || 0) * bomItem.quantity;
+    const availableQuantity = bomItem.component.stock?.quantity || 0;
+    const isAvailable = availableQuantity >= requiredQuantity;
+
+    return {
+      componentId: bomItem.componentId,
+      componentName: bomItem.component.name,
+      requiredQuantity,
+      availableQuantity,
+      isAvailable,
+      shortage: isAvailable ? 0 : requiredQuantity - availableQuantity,
+      bomOperation: bomItem.operation,
+      bomDurationMins: bomItem.opDurationMins,
+    };
+  }) || [];
+
+  // Calculate completion percentage
+  const workOrdersCount = mo.workOrders.length;
+  const completedWorkOrdersCount = mo.workOrders.filter(
+    (wo) => wo.status === WorkStatus.completed
+  ).length;
+  const progressPercentage = workOrdersCount > 0 
+    ? Math.round((completedWorkOrdersCount / workOrdersCount) * 100) 
+    : 0;
+
+  return {
+    ...mo,
+    componentAvailability,
+    progressPercentage,
+    workOrdersCount,
+    completedWorkOrdersCount,
+  };
+};
+
+// Update MO status with validation and work order generation
+export const updateMOStatusService = async (moId: number, newStatus: OrderStatus, userId: number) => {
+  const mo = await prisma.manufacturingOrder.findUnique({
+    where: { id: moId },
+    include: {
+      workOrders: true,
+      product: {
+        include: {
+          bom: true,
+        },
+      },
+    },
+  });
+
+  if (!mo) {
+    throw new Error('Manufacturing Order not found');
+  }
+
+  // Validate status transitions
+  const validTransitions: Record<OrderStatus, OrderStatus[]> = {
+    [OrderStatus.draft]: [OrderStatus.confirmed, OrderStatus.cancelled],
+    [OrderStatus.confirmed]: [OrderStatus.in_progress, OrderStatus.cancelled],
+    [OrderStatus.in_progress]: [OrderStatus.done, OrderStatus.cancelled],
+    [OrderStatus.to_close]: [OrderStatus.done, OrderStatus.cancelled],
+    [OrderStatus.done]: [], // Terminal state
+    [OrderStatus.cancelled]: [], // Terminal state
+  };
+
+  if (!validTransitions[mo.status].includes(newStatus)) {
+    throw new Error(`Invalid status transition from ${mo.status} to ${newStatus}`);
+  }
+
+  const updateData: any = {
+    status: newStatus,
+    updatedAt: new Date(),
+  };
+
+  // Handle specific status transitions
+  if (newStatus === OrderStatus.in_progress && mo.status === OrderStatus.confirmed) {
+    updateData.scheduleStartDate = updateData.scheduleStartDate || new Date();
+  }
+
+  if (newStatus === OrderStatus.done) {
+    // Validate all work orders are completed
+    const incompleteWorkOrders = mo.workOrders.filter(wo => wo.status !== WorkStatus.completed);
+    if (incompleteWorkOrders.length > 0) {
+      throw new Error('Cannot mark MO as done. Some work orders are not completed.');
+    }
+  }
+
+  // Use transaction to update MO and potentially create work orders
+  const result = await prisma.$transaction(async (tx) => {
+    // Update the MO
+    const updatedMO = await tx.manufacturingOrder.update({
+      where: { id: moId },
+      data: updateData,
+    });
+
+    // Auto-generate work orders when moving to confirmed
+    if (newStatus === OrderStatus.confirmed && mo.status === OrderStatus.draft) {
+      if (mo.product?.bom && mo.product.bom.length > 0) {
+        const workOrdersToCreate = mo.product.bom.map((bomItem) => ({
+          moId: moId,
+          operation: bomItem.operation || `Process Component ${bomItem.componentId}`,
+          status: WorkStatus.to_do,
+          durationMins: bomItem.opDurationMins || 60, // Default to 60 minutes
+          comments: `Auto-generated for component ID: ${bomItem.componentId}`,
+        }));
+
+        await tx.workOrder.createMany({
+          data: workOrdersToCreate,
+        });
+      }
+    }
+
+    return updatedMO;
+  });
+
+  return result;
+};
+
+// Delete or cancel MO
+export const deleteMOService = async (moId: number, userId: number) => {
+  const mo = await prisma.manufacturingOrder.findUnique({
+    where: { id: moId },
+    include: {
+      workOrders: true,
+    },
+  });
+
+  if (!mo) {
+    throw new Error('Manufacturing Order not found');
+  }
+
+  // Business rules for deletion/cancellation
+  if (mo.status === OrderStatus.draft) {
+    // Allow deletion of draft MOs - hard delete with cleanup
+    await prisma.$transaction(async (tx) => {
+      // Delete associated work orders first
+      await tx.workOrder.deleteMany({
+        where: { moId: moId },
+      });
+
+      // Delete the MO
+      await tx.manufacturingOrder.delete({
+        where: { id: moId },
+      });
+    });
+
+    return { message: 'Manufacturing Order deleted successfully', deleted: true };
+  } else if (mo.status === OrderStatus.confirmed || mo.status === OrderStatus.in_progress) {
+    // Allow cancellation - soft update to cancelled status
+    const cancelledMO = await prisma.$transaction(async (tx) => {
+      // Cancel all associated work orders
+      await tx.workOrder.updateMany({
+        where: { 
+          moId: moId,
+          status: { in: [WorkStatus.to_do, WorkStatus.started, WorkStatus.paused] }
+        },
+        data: { status: WorkStatus.completed }, // Mark as completed to avoid confusion
+      });
+
+      // Update MO status to cancelled
+      return await tx.manufacturingOrder.update({
+        where: { id: moId },
+        data: {
+          status: OrderStatus.cancelled,
+          updatedAt: new Date(),
+        },
+      });
+    });
+
+    return { message: 'Manufacturing Order cancelled successfully', cancelled: true, data: cancelledMO };
+  } else {
+    throw new Error(`Cannot delete/cancel MO with status: ${mo.status}`);
+  }
+};
+
+// Component availability interfaces
+interface ComponentAvailability {
+  componentId: number;
+  componentName: string;
+  componentDescription: string | null;
+  componentUnit: string;
+  requiredQuantity: number;
+  availableQuantity: number;
+  isAvailable: boolean;
+  shortage: number;
+  unitCost: number;
+  totalCost: number;
+  bomOperation: string | null;
+  bomDurationMins: number | null;
+}
+
+interface ComponentAvailabilityResponse {
+  moId: number;
+  moQuantity: number;
+  productName: string;
+  components: ComponentAvailability[];
+  totalMaterialCost: number;
+  allComponentsAvailable: boolean;
+  shortageCount: number;
+}
+
+// MO validation interfaces
+interface ValidationError {
+  field: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+interface MOValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationError[];
+  canConfirm: boolean;
+  validationSummary: {
+    componentsValid: boolean;
+    workCenterValid: boolean;
+    userPermissionsValid: boolean;
+  };
+}
+
+// BOM population interface
+interface BOMComponent {
+  componentId: number;
+  componentName: string;
+  quantity: number;
+  operation: string | null;
+  opDurationMins: number | null;
+  unitCost: number;
+}
+
+interface BOMPopulationResult {
+  productId: number;
+  productName: string;
+  components: BOMComponent[];
+  operations: string[];
+  totalMaterialCost: number;
+  estimatedDurationMins: number;
+}
+
+// Get component availability for a Manufacturing Order
+export const getComponentAvailabilityService = async (moId: number): Promise<ComponentAvailabilityResponse> => {
+  const mo = await prisma.manufacturingOrder.findUnique({
+    where: { id: moId },
+    include: {
+      product: {
+        include: {
+          bom: {
+            include: {
+              component: {
+                include: {
+                  stock: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!mo) {
+    throw new Error('Manufacturing Order not found');
+  }
+
+  if (!mo.product) {
+    throw new Error('Manufacturing Order has no associated product');
+  }
+
+  if (!mo.quantity) {
+    throw new Error('Manufacturing Order has no quantity specified');
+  }
+
+  // Calculate component requirements
+  const components: ComponentAvailability[] = mo.product.bom.map((bomItem) => {
+    const requiredQuantity = mo.quantity! * bomItem.quantity;
+    const availableQuantity = bomItem.component.stock?.quantity || 0;
+    const isAvailable = availableQuantity >= requiredQuantity;
+    const shortage = isAvailable ? 0 : requiredQuantity - availableQuantity;
+    
+    // For now, using a default unit cost of 10. In a real system, this would come from a cost table
+    const unitCost = 10; // This should be fetched from a component cost table
+    const totalCost = requiredQuantity * unitCost;
+
+    return {
+      componentId: bomItem.componentId,
+      componentName: bomItem.component.name,
+      componentDescription: bomItem.component.description,
+      componentUnit: bomItem.component.unit,
+      requiredQuantity,
+      availableQuantity,
+      isAvailable,
+      shortage,
+      unitCost,
+      totalCost,
+      bomOperation: bomItem.operation,
+      bomDurationMins: bomItem.opDurationMins,
+    };
+  });
+
+  const totalMaterialCost = components.reduce((sum, comp) => sum + comp.totalCost, 0);
+  const allComponentsAvailable = components.every(comp => comp.isAvailable);
+  const shortageCount = components.filter(comp => !comp.isAvailable).length;
+
+  return {
+    moId: mo.id,
+    moQuantity: mo.quantity,
+    productName: mo.product.name,
+    components,
+    totalMaterialCost,
+    allComponentsAvailable,
+    shortageCount,
+  };
+};
+
+// Validate Manufacturing Order before confirmation
+export const validateMOService = async (moId: number, userId: number): Promise<MOValidationResult> => {
+  const mo = await prisma.manufacturingOrder.findUnique({
+    where: { id: moId },
+    include: {
+      product: {
+        include: {
+          bom: {
+            include: {
+              component: {
+                include: {
+                  stock: true,
+                },
+              },
+            },
+          },
+        },
+      },
+      assignedTo: true,
+      workOrders: {
+        include: {
+          workCenter: true,
+        },
+      },
+    },
+  });
+
+  if (!mo) {
+    throw new Error('Manufacturing Order not found');
+  }
+
+  const errors: ValidationError[] = [];
+  const warnings: ValidationError[] = [];
+
+  // 1. Validate components availability
+  let componentsValid = true;
+  if (mo.product && mo.quantity) {
+    for (const bomItem of mo.product.bom) {
+      const requiredQuantity = mo.quantity * bomItem.quantity;
+      const availableQuantity = bomItem.component.stock?.quantity || 0;
+      
+      if (availableQuantity < requiredQuantity) {
+        componentsValid = false;
+        const shortage = requiredQuantity - availableQuantity;
+        errors.push({
+          field: 'components',
+          message: `Insufficient stock for component "${bomItem.component.name}". Required: ${requiredQuantity}, Available: ${availableQuantity}, Shortage: ${shortage}`,
+          severity: 'error',
+        });
+      } else if (availableQuantity < requiredQuantity * 1.1) {
+        // Warn if stock level is less than 110% of requirement
+        warnings.push({
+          field: 'components',
+          message: `Low stock warning for component "${bomItem.component.name}". Consider restocking soon.`,
+          severity: 'warning',
+        });
+      }
+    }
+  } else {
+    componentsValid = false;
+    errors.push({
+      field: 'product',
+      message: 'Manufacturing Order must have a product and quantity specified',
+      severity: 'error',
+    });
+  }
+
+  // 2. Validate work center capacity
+  let workCenterValid = true;
+  const workCenterIds = new Set<number>();
+  
+  for (const workOrder of mo.workOrders) {
+    if (workOrder.workCenterId) {
+      workCenterIds.add(workOrder.workCenterId);
+    }
+  }
+
+  for (const workCenterId of workCenterIds) {
+    const workCenter = await prisma.workCenter.findUnique({
+      where: { id: workCenterId },
+      include: {
+        workOrders: {
+          where: {
+            status: { in: [WorkStatus.to_do, WorkStatus.started] },
+          },
+        },
+      },
+    });
+
+    if (!workCenter) {
+      workCenterValid = false;
+      errors.push({
+        field: 'workCenter',
+        message: `Work center with ID ${workCenterId} not found`,
+        severity: 'error',
+      });
+    } else {
+      // Check if work center has too many active work orders (simple capacity check)
+      const activeWorkOrders = workCenter.workOrders.length;
+      const maxCapacity = 10; // This should be configurable per work center
+      
+      if (activeWorkOrders >= maxCapacity) {
+        workCenterValid = false;
+        errors.push({
+          field: 'workCenter',
+          message: `Work center "${workCenter.name}" is at capacity. Active work orders: ${activeWorkOrders}/${maxCapacity}`,
+          severity: 'error',
+        });
+      } else if (activeWorkOrders >= maxCapacity * 0.8) {
+        warnings.push({
+          field: 'workCenter',
+          message: `Work center "${workCenter.name}" is nearing capacity. Active work orders: ${activeWorkOrders}/${maxCapacity}`,
+          severity: 'warning',
+        });
+      }
+    }
+  }
+
+  // 3. Validate assigned user permissions
+  let userPermissionsValid = true;
+  if (mo.assignedToId) {
+    const assignedUser = await prisma.user.findUnique({
+      where: { id: mo.assignedToId },
+    });
+
+    if (!assignedUser) {
+      userPermissionsValid = false;
+      errors.push({
+        field: 'assignedUser',
+        message: 'Assigned user not found',
+        severity: 'error',
+      });
+    } else {
+      // Check if user has appropriate role
+      if (assignedUser.role === 'user' && mo.product?.bom.length && mo.product.bom.length > 5) {
+        warnings.push({
+          field: 'assignedUser',
+          message: 'Assigned user has basic role but MO has complex BOM. Consider assigning to manager or admin.',
+          severity: 'warning',
+        });
+      }
+
+      // Check if user is already overloaded
+      const userActiveMOs = await prisma.manufacturingOrder.count({
+        where: {
+          assignedToId: mo.assignedToId,
+          status: { in: [OrderStatus.confirmed, OrderStatus.in_progress] },
+        },
+      });
+
+      if (userActiveMOs >= 5) {
+        warnings.push({
+          field: 'assignedUser',
+          message: `Assigned user already has ${userActiveMOs} active MOs. Consider load balancing.`,
+          severity: 'warning',
+        });
+      }
+    }
+  }
+
+  // 4. Additional validations
+  if (!mo.deadline) {
+    warnings.push({
+      field: 'deadline',
+      message: 'No deadline specified for Manufacturing Order',
+      severity: 'warning',
+    });
+  } else if (mo.deadline < new Date()) {
+    errors.push({
+      field: 'deadline',
+      message: 'Deadline is in the past',
+      severity: 'error',
+    });
+  }
+
+  if (!mo.scheduleStartDate) {
+    warnings.push({
+      field: 'scheduleStartDate',
+      message: 'No scheduled start date specified',
+      severity: 'warning',
+    });
+  }
+
+  const isValid = errors.length === 0;
+  const canConfirm = isValid && componentsValid && workCenterValid && userPermissionsValid;
+
+  return {
+    isValid,
+    errors,
+    warnings,
+    canConfirm,
+    validationSummary: {
+      componentsValid,
+      workCenterValid,
+      userPermissionsValid,
+    },
+  };
+};
+
+// Get BOM population data for a product
+export const getBOMPopulationService = async (productId: number): Promise<BOMPopulationResult> => {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: {
+      bom: {
+        include: {
+          component: true,
+        },
+      },
+    },
+  });
+
+  if (!product) {
+    throw new Error('Product not found');
+  }
+
+  const components: BOMComponent[] = product.bom.map((bomItem) => {
+    const unitCost = 10; // This should come from a cost table in a real system
+    
+    return {
+      componentId: bomItem.componentId,
+      componentName: bomItem.component.name,
+      quantity: bomItem.quantity,
+      operation: bomItem.operation,
+      opDurationMins: bomItem.opDurationMins,
+      unitCost,
+    };
+  });
+
+  const operations = product.bom
+    .filter(item => item.operation)
+    .map(item => item.operation!)
+    .filter((operation, index, arr) => arr.indexOf(operation) === index); // Remove duplicates
+
+  const totalMaterialCost = components.reduce((sum, comp) => sum + (comp.quantity * comp.unitCost), 0);
+  const estimatedDurationMins = product.bom.reduce((sum, item) => sum + (item.opDurationMins || 0), 0);
+
+  return {
+    productId: product.id,
+    productName: product.name,
+    components,
+    operations,
+    totalMaterialCost,
+    estimatedDurationMins,
+  };
+};
+
+// Enhanced MO creation with BOM population
+export const createManufacturingOrderWithBOMService = async (
+  createdById: number,
+  productId: number,
+  quantity: number,
+  scheduleStartDate?: string,
+  deadline?: string,
+  assignedToId?: number
+) => {
+  // Get BOM data first
+  const bomData = await getBOMPopulationService(productId);
+
+  // Create the MO
+  const createData: any = {
+    status: OrderStatus.draft,
+    createdById,
+    productId,
+    quantity,
+  };
+
+  if (scheduleStartDate) createData.scheduleStartDate = new Date(scheduleStartDate);
+  if (deadline) createData.deadline = new Date(deadline);
+  if (assignedToId) createData.assignedToId = assignedToId;
+
+  const mo = await prisma.$transaction(async (tx) => {
+    // Create the Manufacturing Order
+    const newMO = await tx.manufacturingOrder.create({
+      data: createData,
+    });
+
+    // Create work orders based on BOM operations
+    if (bomData.operations.length > 0) {
+      const workOrdersToCreate = bomData.operations.map((operation) => ({
+        moId: newMO.id,
+        operation,
+        status: WorkStatus.to_do,
+        durationMins: bomData.estimatedDurationMins / bomData.operations.length, // Distribute duration evenly
+        comments: `Auto-generated from BOM for operation: ${operation}`,
+      }));
+
+      await tx.workOrder.createMany({
+        data: workOrdersToCreate,
+      });
+    }
+
+    return newMO;
+  });
+
+  return {
+    mo,
+    bomPopulation: bomData,
+    workOrdersCreated: bomData.operations.length,
+  };
+};

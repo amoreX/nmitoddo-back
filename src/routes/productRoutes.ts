@@ -8,6 +8,7 @@ import {
   searchProducts,
   getProductsWithLowStock,
 } from "../controllers/productController";
+import { getBOMPopulation } from "../controllers/manufacturingOrderController";
 import { authMiddleware } from "../middleware/authMiddleware";
 
 const productRoutes = Router();
@@ -28,6 +29,10 @@ productRoutes.get("/search", searchProducts);
 // Query params: threshold (optional, default: 10)
 // Public to authenticated users
 productRoutes.get("/low-stock", getProductsWithLowStock);
+
+// GET /api/products/:id/bom - Get BOM population data for product
+// Returns components, operations, and cost estimates for MO creation
+productRoutes.get("/:id/bom", getBOMPopulation);
 
 /**
  * Main CRUD Routes

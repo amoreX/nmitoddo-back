@@ -2,16 +2,45 @@ import { Router } from "express";
 import {
   createManufacturingOrder,
   draftManufacturingOrder,
+  getDashboardMOs,
+  getMOWithDetails,
+  updateMOStatus,
+  deleteMO,
+  getComponentAvailability,
+  validateMO,
+  getBOMPopulation,
+  createManufacturingOrderWithBOM,
 } from "../controllers/manufacturingOrderController";
+import { authMiddleware } from "../middleware/authMiddleware";
 
 
 const manufacturingOrderRoutes = Router();
 
-// Create a new Manufacturing Order
-manufacturingOrderRoutes.post("/new", createManufacturingOrder);
+// Dashboard endpoint - must come before /:id routes
+manufacturingOrderRoutes.get("/dashboard", authMiddleware, getDashboardMOs);
 
-// fetch list of available shit
-// mo/save draft -> all these fields and list of comps and list of work orders in input -> save that shit in db and keep shit draft
+// Create a new Manufacturing Order (basic)
+manufacturingOrderRoutes.post("/new", authMiddleware, createManufacturingOrder);
 
-manufacturingOrderRoutes.post("/save-draft", draftManufacturingOrder);
+// Create a new Manufacturing Order with automatic BOM population
+manufacturingOrderRoutes.post("/new-with-bom", authMiddleware, createManufacturingOrderWithBOM);
+
+// Save draft MO
+manufacturingOrderRoutes.post("/save-draft", authMiddleware, draftManufacturingOrder);
+
+// Get component availability for MO
+manufacturingOrderRoutes.get("/:id/components", authMiddleware, getComponentAvailability);
+
+// Validate MO before confirmation
+manufacturingOrderRoutes.post("/:id/validate", authMiddleware, validateMO);
+
+// Get single MO with details
+manufacturingOrderRoutes.get("/:id", authMiddleware, getMOWithDetails);
+
+// Update MO status
+manufacturingOrderRoutes.put("/:id/status", authMiddleware, updateMOStatus);
+
+// Delete or cancel MO
+manufacturingOrderRoutes.delete("/:id", authMiddleware, deleteMO);
+
 export default manufacturingOrderRoutes;
