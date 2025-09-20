@@ -46,6 +46,120 @@ interface DashboardMO {
   completedAt?: Date | null;
 }
 
+// Dashboard KPIs interface
+interface DashboardKPIs {
+  totalOrders: number;
+  ordersCompleted: number;
+  ordersInProgress: number;
+  ordersDelayed: number;
+  ordersPending: number;
+  ordersCancelled: number;
+  averageCompletionTime: number | null; // in hours
+  onTimeDeliveryRate: number; // percentage
+}
+
+// Dashboard KPIs service
+export const getDashboardKPIsService = async (): Promise<DashboardKPIs> => {
+  try {
+    // Get total counts by status
+    const statusCounts = await prisma.manufacturingOrder.groupBy({
+      by: ['status'],
+      _count: { status: true },
+      orderBy: { status: 'asc' } // Add required orderBy
+    });
+
+    // Initialize counters
+    let totalOrders = 0;
+    let ordersCompleted = 0;
+    let ordersInProgress = 0;
+    let ordersPending = 0;
+    let ordersCancelled = 0;
+
+    // Process status counts
+    statusCounts.forEach(({ status, _count }) => {
+      totalOrders += _count.status;
+      
+      switch (status) {
+        case 'done':
+          ordersCompleted += _count.status;
+          break;
+        case 'in_progress':
+          ordersInProgress += _count.status;
+          break;
+        case 'draft':
+        case 'confirmed':
+          ordersPending += _count.status;
+          break;
+        case 'cancelled':
+          ordersCancelled += _count.status;
+          break;
+      }
+    });
+
+    // Get delayed orders (past deadline but not completed)
+    const now = new Date();
+    const delayedOrders = await prisma.manufacturingOrder.count({
+      where: {
+        deadline: { lt: now },
+        status: { in: ['draft', 'confirmed', 'in_progress'] }
+      }
+    });
+
+    // Calculate on-time delivery rate
+    const completedWithDeadlines = await prisma.manufacturingOrder.count({
+      where: {
+        status: 'done',
+        deadline: { not: null }
+      }
+    });
+
+    const completedOnTime = await prisma.manufacturingOrder.count({
+      where: {
+        status: 'done',
+        deadline: { not: null },
+        updatedAt: { lte: prisma.manufacturingOrder.fields.deadline }
+      }
+    });
+
+    const onTimeDeliveryRate = completedWithDeadlines > 0 
+      ? Math.round((completedOnTime / completedWithDeadlines) * 100) 
+      : 100;
+
+    // Calculate average completion time for completed orders
+    const completedOrders = await prisma.manufacturingOrder.findMany({
+      where: { status: 'done' },
+      select: { 
+        createdAt: true, 
+        updatedAt: true 
+      }
+    });
+
+    let averageCompletionTime: number | undefined;
+    if (completedOrders.length > 0) {
+      const totalHours = completedOrders.reduce((sum, order) => {
+        const diffMs = order.updatedAt.getTime() - order.createdAt.getTime();
+        return sum + (diffMs / (1000 * 60 * 60)); // Convert to hours
+      }, 0);
+      averageCompletionTime = Math.round(totalHours / completedOrders.length);
+    }
+
+    return {
+      totalOrders,
+      ordersCompleted,
+      ordersInProgress,
+      ordersDelayed: delayedOrders,
+      ordersPending,
+      ordersCancelled,
+      averageCompletionTime: averageCompletionTime ?? null,
+      onTimeDeliveryRate
+    };
+
+  } catch (error) {
+    console.error('Error fetching dashboard KPIs:', error);
+    throw new Error('Failed to fetch dashboard KPIs');
+  }
+};
+
 export const createManufacturingOrderService = async (
   createdById: number,
   productId?: number,

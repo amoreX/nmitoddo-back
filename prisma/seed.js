@@ -20,6 +20,7 @@ async function main() {
   await prisma.productStock.deleteMany();
   await prisma.product.deleteMany();
   await prisma.workCenter.deleteMany();
+  await prisma.report.deleteMany();
   await prisma.session.deleteMany();
   await prisma.user.deleteMany();
 
@@ -65,50 +66,86 @@ async function main() {
 
   // Create Work Centers first
   console.log("Creating work centers...");
-  const cuttingStation = await prisma.workCenter.create({
+  const assemblyLine = await prisma.workCenter.create({
     data: { 
-      name: "Cutting Station", 
-      location: "Workshop A", 
-      capacityPerHour: 10, 
+      name: "Assembly Line", 
+      location: "Production Floor A", 
+      capacityPerHour: 6, 
       costPerHour: 25.0,
       createdById: admin.id 
     }
   });
-  const assemblyStation = await prisma.workCenter.create({
+  const paintFloor = await prisma.workCenter.create({
     data: { 
-      name: "Assembly Station", 
-      location: "Workshop B", 
-      capacityPerHour: 8, 
-      costPerHour: 30.0,
+      name: "Paint Floor", 
+      location: "Painting Bay B", 
+      capacityPerHour: 12, 
+      costPerHour: 20.0,
       createdById: admin.id 
     }
   });
-  const finishingStation = await prisma.workCenter.create({
+  const packagingLine = await prisma.workCenter.create({
     data: { 
-      name: "Finishing Station", 
-      location: "Workshop C", 
-      capacityPerHour: 6, 
-      costPerHour: 35.0,
+      name: "Packaging Line", 
+      location: "Shipping Area C", 
+      capacityPerHour: 18, 
+      costPerHour: 15.0,
       createdById: admin.id 
     }
   });
 
-  // Step 1: Create component/material products for MO Preset 1: Premium Laptop
-  console.log("Creating Premium Laptop components...");
-  const intelProcessor = await prisma.product.create({
-    data: { name: "Intel Core i7 Processor", description: "High-performance processor", unit: "pieces" }
+    // Step 1: Create component/material products for Dining Table
+  console.log("Creating Dining Table components...");
+  const diningTableLegs = await prisma.product.create({
+    data: { name: "Wooden Legs - Dining", description: "Solid oak table legs", unit: "pieces" }
   });
-  const ramMemory = await prisma.product.create({
-    data: { name: "16GB DDR4 RAM", description: "High-speed memory", unit: "pieces" }
+  const diningTableTop = await prisma.product.create({
+    data: { name: "Wooden Top - Dining", description: "Large dining table surface", unit: "pieces" }
   });
-  const ssdStorage = await prisma.product.create({
-    data: { name: "512GB NVMe SSD", description: "Fast storage drive", unit: "pieces" }
+  const tableScrews = await prisma.product.create({
+    data: { name: "Wood Screws", description: "Heavy-duty wood screws", unit: "pieces" }
   });
-  const laptopScreen = await prisma.product.create({
-    data: { name: "15.6 4K Display", description: "Ultra HD display", unit: "pieces" }
+  const oakVarnish = await prisma.product.create({
+    data: { name: "Oak Varnish", description: "Premium wood finish", unit: "bottles" }
   });
-  const laptopBattery = await prisma.product.create({
-    data: { name: "Lithium Battery", description: "Long-life battery", unit: "pieces" }
+  const sandpaper = await prisma.product.create({
+    data: { name: "Sandpaper", description: "Fine-grit sandpaper", unit: "sheets" }
+  });
+
+  // Step 2: Create component products for Coffee Table
+  console.log("Creating Coffee Table components...");
+  const coffeeTableLegs = await prisma.product.create({
+    data: { name: "Wooden Legs - Coffee", description: "Short coffee table legs", unit: "pieces" }
+  });
+  const coffeeTableTop = await prisma.product.create({
+    data: { name: "Wooden Top - Coffee", description: "Round coffee table surface", unit: "pieces" }
+  });
+  const metalBrackets = await prisma.product.create({
+    data: { name: "Metal Brackets", description: "Reinforcement brackets", unit: "pieces" }
+  });
+  const clearVarnish = await prisma.product.create({
+    data: { name: "Clear Varnish", description: "Transparent wood finish", unit: "bottles" }
+  });
+  const foamPadding = await prisma.product.create({
+    data: { name: "Foam Padding", description: "Protective packaging foam", unit: "sheets" }
+  });
+
+  // Step 3: Create component products for Office Desk
+  console.log("Creating Office Desk components...");
+  const deskLegs = await prisma.product.create({
+    data: { name: "Wooden Legs - Desk", description: "Adjustable desk legs", unit: "pieces" }
+  });
+  const deskTop = await prisma.product.create({
+    data: { name: "Wooden Top - Desk", description: "Rectangular desk surface", unit: "pieces" }
+  });
+  const deskDrawer = await prisma.product.create({
+    data: { name: "Desk Drawer", description: "Side drawer unit", unit: "pieces" }
+  });
+  const drawerSlides = await prisma.product.create({
+    data: { name: "Drawer Slides", description: "Heavy-duty drawer slides", unit: "pairs" }
+  });
+  const deskVarnish = await prisma.product.create({
+    data: { name: "Mahogany Varnish", description: "Rich mahogany finish", unit: "bottles" }
   });
 
   // Step 2: Create components for MO Preset 2: Gaming Desktop
@@ -152,14 +189,14 @@ async function main() {
   // Step 4: Create finished products for MOPresets
   console.log("Creating finished products...");
   
-  const premiumLaptopProduct = await prisma.product.create({
-    data: { name: "Premium Laptop A1", description: "High-end laptop configuration", unit: "Unit" }
+  const diningTableProduct = await prisma.product.create({
+    data: { name: "Dining Table - Oak", description: "6-seater oak dining table", unit: "pieces" }
   });
-  const gamingDesktopProduct = await prisma.product.create({
-    data: { name: "Gaming Desktop GX", description: "Ultimate gaming machine", unit: "Unit" }
+  const coffeeTableProduct = await prisma.product.create({
+    data: { name: "Coffee Table - Round", description: "Round coffee table with storage", unit: "pieces" }
   });
-  const workstationProduct = await prisma.product.create({
-    data: { name: "Office Workstation Pro", description: "Professional workstation", unit: "Unit" }
+  const officeDeskProduct = await prisma.product.create({
+    data: { name: "Office Desk - Executive", description: "Executive mahogany desk with drawers", unit: "pieces" }
   });
 
   console.log("Finished products created");
@@ -167,36 +204,37 @@ async function main() {
   // Step 5: Create Bill of Materials with separate operation and opDurationMins
   console.log("Creating Bill of Materials...");
   
-  // Premium Laptop BoM
+  // Dining Table BoM - Following the example: 4 × Wooden Legs Assembly 60 mins, 1 × Wooden Top Painting 30 mins, 12 × Screws Packing 20 mins, 1 × Varnish Bottle
   await prisma.billOfMaterial.createMany({
     data: [
-      { productId: premiumLaptopProduct.id, componentId: intelProcessor.id, quantity: 1, operation: "CPU Installation", opDurationMins: 30 },
-      { productId: premiumLaptopProduct.id, componentId: ramMemory.id, quantity: 1, operation: "Memory Installation", opDurationMins: 15 },
-      { productId: premiumLaptopProduct.id, componentId: ssdStorage.id, quantity: 1, operation: "Storage Installation", opDurationMins: 20 },
-      { productId: premiumLaptopProduct.id, componentId: laptopScreen.id, quantity: 1, operation: "Display Assembly", opDurationMins: 45 },
-      { productId: premiumLaptopProduct.id, componentId: laptopBattery.id, quantity: 1, operation: "Battery Installation", opDurationMins: 25 },
+      { productId: diningTableProduct.id, componentId: diningTableLegs.id, quantity: 4, operation: "Assembly", opDurationMins: 60 },
+      { productId: diningTableProduct.id, componentId: diningTableTop.id, quantity: 1, operation: "Painting", opDurationMins: 30 },
+      { productId: diningTableProduct.id, componentId: tableScrews.id, quantity: 12, operation: "Packing", opDurationMins: 20 },
+      { productId: diningTableProduct.id, componentId: oakVarnish.id, quantity: 1, operation: "Finishing", opDurationMins: 15 },
+      { productId: diningTableProduct.id, componentId: sandpaper.id, quantity: 3, operation: "Sanding", opDurationMins: 45 },
     ]
   });
 
-  // Gaming Desktop BoM
+  // Coffee Table BoM
   await prisma.billOfMaterial.createMany({
     data: [
-      { productId: gamingDesktopProduct.id, componentId: amdProcessor.id, quantity: 1, operation: "CPU Installation", opDurationMins: 35 },
-      { productId: gamingDesktopProduct.id, componentId: gamingGpu.id, quantity: 1, operation: "GPU Installation", opDurationMins: 40 },
-      { productId: gamingDesktopProduct.id, componentId: ddr5Ram.id, quantity: 1, operation: "Memory Installation", opDurationMins: 20 },
-      { productId: gamingDesktopProduct.id, componentId: motherboard.id, quantity: 1, operation: "Motherboard Assembly", opDurationMins: 60 },
-      { productId: gamingDesktopProduct.id, componentId: powerSupply.id, quantity: 1, operation: "PSU Installation", opDurationMins: 30 },
+      { productId: coffeeTableProduct.id, componentId: coffeeTableLegs.id, quantity: 4, operation: "Assembly", opDurationMins: 45 },
+      { productId: coffeeTableProduct.id, componentId: coffeeTableTop.id, quantity: 1, operation: "Painting", opDurationMins: 25 },
+      { productId: coffeeTableProduct.id, componentId: tableScrews.id, quantity: 8, operation: "Packing", opDurationMins: 15 },
+      { productId: coffeeTableProduct.id, componentId: metalBrackets.id, quantity: 4, operation: "Assembly", opDurationMins: 20 },
+      { productId: coffeeTableProduct.id, componentId: clearVarnish.id, quantity: 1, operation: "Finishing", opDurationMins: 20 },
     ]
   });
 
-  // Office Workstation BoM
+  // Office Desk BoM
   await prisma.billOfMaterial.createMany({
     data: [
-      { productId: workstationProduct.id, componentId: workstationCpu.id, quantity: 1, operation: "Workstation CPU Install", opDurationMins: 40 },
-      { productId: workstationProduct.id, componentId: eccRam.id, quantity: 1, operation: "ECC Memory Install", opDurationMins: 25 },
-      { productId: workstationProduct.id, componentId: workstationGpu.id, quantity: 1, operation: "Professional GPU Install", opDurationMins: 35 },
-      { productId: workstationProduct.id, componentId: nvmeSsd.id, quantity: 1, operation: "Enterprise Storage Install", opDurationMins: 30 },
-      { productId: workstationProduct.id, componentId: workstationCase.id, quantity: 1, operation: "Case Assembly", opDurationMins: 50 },
+      { productId: officeDeskProduct.id, componentId: deskLegs.id, quantity: 4, operation: "Assembly", opDurationMins: 50 },
+      { productId: officeDeskProduct.id, componentId: deskTop.id, quantity: 1, operation: "Painting", opDurationMins: 40 },
+      { productId: officeDeskProduct.id, componentId: deskDrawer.id, quantity: 2, operation: "Assembly", opDurationMins: 35 },
+      { productId: officeDeskProduct.id, componentId: drawerSlides.id, quantity: 2, operation: "Assembly", opDurationMins: 25 },
+      { productId: officeDeskProduct.id, componentId: tableScrews.id, quantity: 16, operation: "Packing", opDurationMins: 25 },
+      { productId: officeDeskProduct.id, componentId: deskVarnish.id, quantity: 1, operation: "Finishing", opDurationMins: 30 },
     ]
   });
 
@@ -204,32 +242,32 @@ async function main() {
 
   // Step 6: Create MOPresets linked to the products
   console.log("Creating MOPresets...");
-  const laptopPreset = await prisma.mOPresets.create({
+  const diningTablePreset = await prisma.mOPresets.create({
     data: {
-      name: "Premium Laptop A1 - Standard Build",
-      description: "High-end laptop configuration with premium components",
-      quantity: 10,
-      productId: premiumLaptopProduct.id,
-      createdById: admin.id,
-    },
-  });
-  
-  const gamingPreset = await prisma.mOPresets.create({
-    data: {
-      name: "Gaming Desktop GX - Performance Build",
-      description: "Ultimate gaming machine with top-tier components",
+      name: "Dining Table - Oak Standard",
+      description: "6-seater oak dining table with premium finish",
       quantity: 5,
-      productId: gamingDesktopProduct.id,
+      productId: diningTableProduct.id,
       createdById: admin.id,
     },
   });
   
-  const workstationPreset = await prisma.mOPresets.create({
+  const coffeeTablePreset = await prisma.mOPresets.create({
     data: {
-      name: "Office Workstation Pro - Enterprise",
-      description: "Professional workstation for enterprise use",
-      quantity: 15,
-      productId: workstationProduct.id,
+      name: "Coffee Table - Round Standard",
+      description: "Round coffee table with storage compartment",
+      quantity: 8,
+      productId: coffeeTableProduct.id,
+      createdById: admin.id,
+    },
+  });
+  
+  const officeDeskPreset = await prisma.mOPresets.create({
+    data: {
+      name: "Office Desk - Executive Series",
+      description: "Executive mahogany desk with drawers",
+      quantity: 3,
+      productId: officeDeskProduct.id,
       createdById: admin.id,
     },
   });
@@ -238,11 +276,11 @@ async function main() {
 
   // Step 7: Create Manufacturing Orders from the presets
   console.log("Creating Manufacturing Orders...");
-  const laptopMO = await prisma.manufacturingOrder.create({
+  const diningTableMO = await prisma.manufacturingOrder.create({
     data: {
-      quantity: laptopPreset.quantity,
+      quantity: diningTablePreset.quantity,
       status: OrderStatus.confirmed,
-      productId: premiumLaptopProduct.id,
+      productId: diningTableProduct.id,
       createdById: admin.id,
       assignedToId: manager.id,
       scheduleStartDate: new Date('2024-10-01'),
@@ -250,11 +288,11 @@ async function main() {
     },
   });
 
-  const gamingMO = await prisma.manufacturingOrder.create({
+  const coffeeTableMO = await prisma.manufacturingOrder.create({
     data: {
-      quantity: gamingPreset.quantity,
+      quantity: coffeeTablePreset.quantity,
       status: OrderStatus.in_progress,
-      productId: gamingDesktopProduct.id,
+      productId: coffeeTableProduct.id,
       createdById: admin.id,
       assignedToId: manager.id,
       scheduleStartDate: new Date('2024-09-25'),
@@ -262,11 +300,11 @@ async function main() {
     },
   });
 
-  const workstationMO = await prisma.manufacturingOrder.create({
+  const officeDeskMO = await prisma.manufacturingOrder.create({
     data: {
-      quantity: workstationPreset.quantity,
+      quantity: officeDeskPreset.quantity,
       status: OrderStatus.draft,
-      productId: workstationProduct.id,
+      productId: officeDeskProduct.id,
       createdById: admin.id,
       assignedToId: user.id,
       scheduleStartDate: new Date('2024-10-05'),
@@ -277,100 +315,100 @@ async function main() {
   // Step 8: Create Work Orders for each Manufacturing Order
   console.log("Creating Work Orders...");
   
-  // Work Orders for Laptop MO
+  // Work Orders for Dining Table MO - Following the example: Assembly @ Assembly Line 60 mins, Painting @ Paint Floor 30 mins, Packing @ Packaging Line 20 mins
   await prisma.workOrder.createMany({
     data: [
       {
-        operation: "CPU Installation",
+        operation: "Assembly",
         status: WorkStatus.completed,
-        moId: laptopMO.id,
-        workCenterId: assemblyStation.id,
+        moId: diningTableMO.id,
+        workCenterId: assemblyLine.id,
+        assignedToId: user.id,
+        durationMins: 60,
+        durationDoneMins: 58,
+        startedAt: new Date('2024-10-01T09:00:00Z'),
+        completedAt: new Date('2024-10-01T09:58:00Z'),
+      },
+      {
+        operation: "Painting", 
+        status: WorkStatus.completed,
+        moId: diningTableMO.id,
+        workCenterId: paintFloor.id,
         assignedToId: user.id,
         durationMins: 30,
-        durationDoneMins: 28,
-        startedAt: new Date('2024-10-01T09:00:00Z'),
-        completedAt: new Date('2024-10-01T09:28:00Z'),
+        durationDoneMins: 30,
+        startedAt: new Date('2024-10-01T10:30:00Z'),
+        completedAt: new Date('2024-10-01T11:00:00Z'),
       },
       {
-        operation: "Memory Installation", 
-        status: WorkStatus.completed,
-        moId: laptopMO.id,
-        workCenterId: assemblyStation.id,
-        assignedToId: user.id,
-        durationMins: 15,
-        durationDoneMins: 15,
-        startedAt: new Date('2024-10-01T09:30:00Z'),
-        completedAt: new Date('2024-10-01T09:45:00Z'),
-      },
-      {
-        operation: "Display Assembly",
+        operation: "Packing",
         status: WorkStatus.started,
-        moId: laptopMO.id,
-        workCenterId: assemblyStation.id,
+        moId: diningTableMO.id,
+        workCenterId: packagingLine.id,
         assignedToId: user.id,
+        durationMins: 20,
+        durationDoneMins: 10,
+        startedAt: new Date('2024-10-01T11:30:00Z'),
+      },
+    ]
+  });
+
+  // Work Orders for Coffee Table MO
+  await prisma.workOrder.createMany({
+    data: [
+      {
+        operation: "Assembly",
+        status: WorkStatus.completed,
+        moId: coffeeTableMO.id,
+        workCenterId: assemblyLine.id,
+        assignedToId: manager.id,
         durationMins: 45,
-        durationDoneMins: 20,
-        startedAt: new Date('2024-10-01T10:00:00Z'),
-      },
-    ]
-  });
-
-  // Work Orders for Gaming Desktop MO
-  await prisma.workOrder.createMany({
-    data: [
-      {
-        operation: "Motherboard Assembly",
-        status: WorkStatus.completed,
-        moId: gamingMO.id,
-        workCenterId: assemblyStation.id,
-        assignedToId: manager.id,
-        durationMins: 60,
-        durationDoneMins: 65,
+        durationDoneMins: 47,
         startedAt: new Date('2024-09-25T08:00:00Z'),
-        completedAt: new Date('2024-09-25T09:05:00Z'),
+        completedAt: new Date('2024-09-25T08:47:00Z'),
       },
       {
-        operation: "GPU Installation",
+        operation: "Painting",
         status: WorkStatus.completed,
-        moId: gamingMO.id,
-        workCenterId: assemblyStation.id,
-        assignedToId: user.id,
-        durationMins: 40,
-        durationDoneMins: 38,
-        startedAt: new Date('2024-09-25T09:15:00Z'),
-        completedAt: new Date('2024-09-25T09:53:00Z'),
-      },
-      {
-        operation: "Final Testing",
-        status: WorkStatus.to_do,
-        moId: gamingMO.id,
-        workCenterId: finishingStation.id,
-        assignedToId: manager.id,
-        durationMins: 90,
-        durationDoneMins: 0,
-      },
-    ]
-  });
-
-  // Work Orders for Workstation MO (draft status)
-  await prisma.workOrder.createMany({
-    data: [
-      {
-        operation: "Workstation CPU Install",
-        status: WorkStatus.to_do,
-        moId: workstationMO.id,
-        workCenterId: assemblyStation.id,
-        assignedToId: user.id,
-        durationMins: 40,
-        durationDoneMins: 0,
-      },
-      {
-        operation: "ECC Memory Install",
-        status: WorkStatus.to_do,
-        moId: workstationMO.id,
-        workCenterId: assemblyStation.id,
+        moId: coffeeTableMO.id,
+        workCenterId: paintFloor.id,
         assignedToId: user.id,
         durationMins: 25,
+        durationDoneMins: 25,
+        startedAt: new Date('2024-09-25T09:15:00Z'),
+        completedAt: new Date('2024-09-25T09:40:00Z'),
+      },
+      {
+        operation: "Packing",
+        status: WorkStatus.to_do,
+        moId: coffeeTableMO.id,
+        workCenterId: packagingLine.id,
+        assignedToId: manager.id,
+        durationMins: 15,
+        durationDoneMins: 0,
+      },
+    ]
+  });
+
+  // Work Orders for Office Desk MO (draft status)
+  await prisma.workOrder.createMany({
+    data: [
+      {
+        operation: "Assembly",
+        status: WorkStatus.to_do,
+        moId: officeDeskMO.id,
+        workCenterId: assemblyLine.id,
+        assignedToId: user.id,
+        durationMins: 50,
+        durationDoneMins: 0,
+      },
+      {
+        operation: "Painting",
+        status: WorkStatus.to_do,
+        moId: officeDeskMO.id,
+        workCenterId: paintFloor.id,
+        assignedToId: user.id,
+        durationMins: 40,
         durationDoneMins: 0,
       },
     ]

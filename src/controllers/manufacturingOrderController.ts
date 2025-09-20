@@ -10,6 +10,7 @@ import {
   validateMOService,
   getBOMPopulationService,
   createManufacturingOrderWithBOMService,
+  getDashboardKPIsService,
 } from "../services/manufactureService";
 import { OrderStatus } from "@prisma/client";
 export const createManufacturingOrder = async (req: Request, res: Response) => {
