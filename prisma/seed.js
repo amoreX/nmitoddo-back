@@ -10,12 +10,12 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log("Clearing existing data");
-  await prisma.session.deleteMany();
-  await prisma.workOrder.deleteMany();
-  await prisma.manufacturingOrder.deleteMany();
-  await prisma.stockLedger.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.user.deleteMany();
+  // await prisma.session.deleteMany();
+  // await prisma.workOrder.deleteMany();
+  // await prisma.manufacturingOrder.deleteMany();
+  // await prisma.stockLedger.deleteMany();
+  // await prisma.product.deleteMany();
+  // await prisma.user.deleteMany();
 
   await prisma.user.createMany({
     data: [
