@@ -38,33 +38,51 @@ export const createManufacturingOrder = async (req: Request, res: Response) => {
 
 export const draftManufacturingOrder = async (req: Request, res: Response) => {
   try {
-    // Destructure all fields sent from frontend
+    // Destructure fields (BOM components auto-derived but can be modified)
     const {
       id,
-      userId, // Creator of the MO
-      productId,
+      userId, // Creator of the MO  
+      productId, // REQUIRED - Used to lookup BOM components automatically
+      product, // Optional product updates
       quantity,
       scheduleStartDate,
       deadline,
       assignedToId,
-      components, // Array of { componentId, quantity }
-      workOrders, // Array of { operation, assignedToId, workCenterId }
+      bomComponents, // Optional - Modified BOM components from frontend
+      workOrders, // Array of { operation, assignedToId, workCenterId, durationMins, comments }
       status, // Optional, default to draft
     } = req.body;
 
+    // Validate required fields
+    if (!id || !userId || !productId || !quantity) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Required fields: id, userId, productId, quantity" 
+      });
+    }
+
     // Construct payload for service
-    const moData = {
+    const moData: any = {
       id: id,
       createdById: userId,
       productId,
+      product, // Optional product field updates
       quantity,
-      scheduleStartDate,
-      deadline,
-      assignedToId,
-      components,
+      bomComponents, // Modified BOM components (if any)
       workOrders,
       status: status || "draft",
     };
+
+    // Only add dates if they are provided
+    if (scheduleStartDate) {
+      moData.scheduleStartDate = new Date(scheduleStartDate);
+    }
+    if (deadline) {
+      moData.deadline = new Date(deadline);
+    }
+    if (assignedToId) {
+      moData.assignedToId = assignedToId;
+    }
 
     // Call service to save the MO draft
     const mo = await saveDraftManufacturingOrderService(moData);
