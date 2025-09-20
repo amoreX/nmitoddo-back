@@ -28,23 +28,23 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const signup = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { loginId, email, password } = req.body;
 
-  if (!email || !password) {
+  if (!email || !password || !loginId) {
     return res
       .status(400)
       .json({ message: "Email and password are required." });
   }
 
   try {
-    const success = await signupUser(email, password);
+    const result = await signupUser(loginId, email, password);
 
-    if (success) {
-      return res.status(201).json({ message: "Signup successful." });
-    } else {
+    if (result.status) {
       return res
-        .status(409)
-        .json({ message: "User already exists or signup failed." });
+        .status(200)
+        .json({ message: "Signup successful.", user: result.user });
+    } else {
+      return res.status(409).json({ message: result.message });
     }
   } catch (err: any) {
     return res

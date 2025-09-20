@@ -33,23 +33,46 @@ export const loginUser = async (
     return { status: false, message: "An error occurred during login" };
   }
 };
-
 export const signupUser = async (
+  loginId: string,
   email: string,
   password: string,
-): Promise<boolean> => {
-  // fetch user if exists or not
+  fullName?: string, // optional
+): Promise<{ status: boolean; message: string; user?: any }> => {
+  try {
+    const existingEmail = await prisma.user.findUnique({ where: { email } });
+    if (existingEmail) {
+      return { status: false, message: "Email already registered" };
+    }
 
-  // If user exists, throw error
-  // if (existingUser) {
-  //   throw new Error("User with this email already exists");
-  // }
+    const existingLoginId = await prisma.user.findUnique({
+      where: { loginId },
+    });
+    if (existingLoginId) {
+      return {
+        status: false,
+        message: "Login ID already taken, choose a different one",
+      };
+    }
 
-  // Hash the password
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // Hash the password
+    // const saltRounds = 10;
+    // const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-  // Create new user
+    // Create new user
+    const newUser = await prisma.user.create({
+      data: {
+        loginId,
+        email,
+        passwordHash: password,
+        fullName: fullName || "",
+        role: "admin", // default role
+      },
+    });
 
-  return true;
+    return { status: true, message: "Signup successful", user: newUser };
+  } catch (err) {
+    console.error("Signup error:", err);
+    return { status: false, message: "An error occurred during signup" };
+  }
 };
