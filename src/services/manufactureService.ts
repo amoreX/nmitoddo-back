@@ -33,6 +33,21 @@ export const saveDraftManufacturingOrderService = async (
           }
         : undefined,
     },
+    create: {
+      id: moData.id,
+      createdById: moData.createdById,
+      productId: moData.productId,
+      quantity: moData.quantity,
+      scheduleStartDate: moData.scheduleStartDate,
+      deadline: moData.deadline,
+      assignedToId: moData.assignedToId,
+      status: "draft",
+      product: moData.productId
+        ? {
+            connect: { id: moData.productId },
+          }
+        : undefined,
+    },
   });
 
   // Save BOM components if provided
