@@ -38,33 +38,56 @@ export const createManufacturingOrder = async (req: Request, res: Response) => {
 
 export const draftManufacturingOrder = async (req: Request, res: Response) => {
   try {
-    // Destructure all fields sent from frontend
+    // Destructure fields with new ID-first approach
     const {
       id,
-      userId, // Creator of the MO
-      productId,
+      userId, // Creator of the MO  
+      productId, // REQUIRED - Used to lookup BOM components automatically
+      product, // Optional product updates
       quantity,
       scheduleStartDate,
       deadline,
       assignedToId,
-      components, // Array of { componentId, quantity }
-      workOrders, // Array of { operation, assignedToId, workCenterId }
+      bomComponents, // New ID-first approach: { bomIds: [], updates: [] }
+      workOrders, // New ID-first approach: { workOrderIds: [], newWorkOrders: [] }
+      // Legacy support
+      bomIds, // Simple array of BOM IDs
+      workOrderIds, // Simple array of Work Order IDs
       status, // Optional, default to draft
     } = req.body;
 
+    // Validate required fields
+    if (!id || !userId || !productId || !quantity) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Required fields: id, userId, productId, quantity" 
+      });
+    }
+
     // Construct payload for service
-    const moData = {
+    const moData: any = {
       id: id,
       createdById: userId,
       productId,
+      product, // Optional product field updates
       quantity,
-      scheduleStartDate,
-      deadline,
-      assignedToId,
-      components,
-      workOrders,
+      bomComponents, // New ID-first approach
+      workOrders, // New ID-first approach
+      bomIds, // Legacy support
+      workOrderIds, // Legacy support
       status: status || "draft",
     };
+
+    // Only add dates if they are provided
+    if (scheduleStartDate) {
+      moData.scheduleStartDate = new Date(scheduleStartDate);
+    }
+    if (deadline) {
+      moData.deadline = new Date(deadline);
+    }
+    if (assignedToId) {
+      moData.assignedToId = assignedToId;
+    }
 
     // Call service to save the MO draft
     const mo = await saveDraftManufacturingOrderService(moData);
