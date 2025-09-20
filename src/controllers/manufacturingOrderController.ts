@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createManufacturingOrderService } from "../services/manufacturingOrderService";
+import { createManufacturingOrderService } from "../services/manufactureService";
 export const createManufacturingOrder = async (req: Request, res: Response) => {
   try {
     const { userId } = req.body;
