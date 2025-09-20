@@ -9,11 +9,11 @@ generator client {
 
 model User {
   id            Int       @id @default(autoincrement())
-  fullName      String
   email         String    @unique
-  loginId       String    @unique
-  passwordHash  String
-  role          Role @default(user)
+  password      String    // Changed from passwordHash to password for consistency with requirements
+  name          String?   // Made optional as per requirements, renamed from fullName
+  loginId       String?   @unique // Made optional to support email-only login
+  role          Role      @default(user)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

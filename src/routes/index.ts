@@ -5,10 +5,12 @@ import fetchRoutes from "./fetchRoutes";
 import workOrderRoutes from "./workOrderRoutes";
 import workCenterRoutes from "./workCenterRoutes";
 import moPresetsRoutes from "./moPresetsRoutes";
+import profileRoutes from "./profileRoutes";
 
 const apiRoutes = Router();
 
 apiRoutes.use("/auth", authRoutes);
+apiRoutes.use("/profile", profileRoutes); // Protected route example
 apiRoutes.use("/mo", manufacturingOrderRoutes);
 apiRoutes.use("/fetch", fetchRoutes);
 apiRoutes.use("/wo", workOrderRoutes);

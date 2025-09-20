@@ -1,50 +1,58 @@
-import {
+const {
   PrismaClient,
   Role,
   OrderStatus,
   WorkStatus,
   MovementType,
-} from "@prisma/client";
+} = require("@prisma/client");
+const bcrypt = require("bcrypt");
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Clearing existing data");
-  // Note: Clear data in dependency order if needed
-  // await prisma.workOrder.deleteMany();
-  // await prisma.manufacturingOrder.deleteMany();
-  // await prisma.mOPresets.deleteMany();
-  // await prisma.billOfMaterial.deleteMany();
-  // await prisma.productLedger.deleteMany();
-  // await prisma.productStock.deleteMany();
-  // await prisma.product.deleteMany();
-  // await prisma.session.deleteMany();
-  // await prisma.user.deleteMany();
+  console.log("Clearing existing data in dependency order...");
+  // Clear data in dependency order (child tables first)
+  await prisma.workOrder.deleteMany();
+  await prisma.manufacturingOrder.deleteMany();
+  await prisma.mOPresets.deleteMany();
+  await prisma.billOfMaterial.deleteMany();
+  await prisma.productLedger.deleteMany();
+  await prisma.productStock.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.workCenter.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.user.deleteMany();
+
+  // Create users with hashed passwords
+  console.log("Creating users...");
+  const saltRounds = 12;
+  
+  const users = [
+    {
+      name: "Keshav Joshi",
+      email: "keshav@example.com",
+      loginId: "keshav",
+      password: await bcrypt.hash("Password@123", saltRounds),
+      role: Role.admin,
+    },
+    {
+      name: "Nihal",
+      email: "nihal@example.com",
+      loginId: "nihal", 
+      password: await bcrypt.hash("nihal", saltRounds),
+      role: Role.manager,
+    },
+    {
+      name: "Ronish",
+      email: "ronish@example.com",
+      loginId: "ronish",
+      password: await bcrypt.hash("ronish", saltRounds),
+      role: Role.user,
+    },
+  ];
 
   await prisma.user.createMany({
-    data: [
-      {
-        fullName: "Alice Admin",
-        email: "alice@example.com",
-        loginId: "alice",
-        passwordHash: "hashed-password-1",
-        role: Role.admin,
-      },
-      {
-        fullName: "Bob Manager",
-        email: "bob@example.com",
-        loginId: "bob",
-        passwordHash: "hashed-password-2",
-        role: Role.manager,
-      },
-      {
-        fullName: "Charlie User",
-        email: "charlie@example.com",
-        loginId: "charlie",
-        passwordHash: "hashed-password-3",
-        role: Role.user,
-      },
-    ],
+    data: users,
     skipDuplicates: true,
   });
 

@@ -15,7 +15,7 @@ export const getAllMOPresetsService = async (userRole: Role) => {
         createdBy: {
           select: {
             id: true,
-            fullName: true,
+            name: true,
             email: true,
           },
         },
@@ -68,7 +68,7 @@ export const getMOPresetByIdService = async (id: number, userRole: Role) => {
         createdBy: {
           select: {
             id: true,
-            fullName: true,
+            name: true,
             email: true,
           },
         },
@@ -162,7 +162,7 @@ export const createMOPresetService = async (
         createdBy: {
           select: {
             id: true,
-            fullName: true,
+            name: true,
             email: true,
           },
         },
@@ -246,7 +246,7 @@ export const updateMOPresetService = async (
         createdBy: {
           select: {
             id: true,
-            fullName: true,
+            name: true,
             email: true,
           },
         },

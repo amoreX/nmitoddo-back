@@ -1,10 +1,14 @@
 import { Router } from "express";
-import { login, signup } from "../controllers/authController";
+import { loginController, signupController } from "../controllers/authController";
 
 const authRoutes = Router();
 
-authRoutes.post("/login", login);
+// POST /auth/signup - User registration
+// Expected input: { email: string, password: string, name?: string }
+authRoutes.post("/signup", signupController);
 
-authRoutes.post("/signup", signup);
+// POST /auth/login - User authentication
+// Expected input: { email: string, password: string }
+authRoutes.post("/login", loginController);
 
 export default authRoutes;

@@ -37,7 +37,7 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
       prisma.user.findMany({
         select: {
           id: true,
-          fullName: true,
+          name: true,
           email: true,
           loginId: true,
           role: true,
@@ -50,7 +50,7 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
           user: {
             select: {
               id: true,
-              fullName: true,
+              name: true,
               loginId: true,
             },
           },
@@ -75,7 +75,7 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
           createdBy: {
             select: {
               id: true,
-              fullName: true,
+              name: true,
               email: true,
             },
           },
@@ -134,14 +134,14 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
           createdBy: {
             select: {
               id: true,
-              fullName: true,
+              name: true,
               loginId: true,
             },
           },
           assignedTo: {
             select: {
               id: true,
-              fullName: true,
+              name: true,
               loginId: true,
             },
           },
@@ -175,7 +175,7 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
           assignedTo: {
             select: {
               id: true,
-              fullName: true,
+              name: true,
               loginId: true,
             },
           },
@@ -221,7 +221,7 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
           user: {
             select: {
               id: true,
-              fullName: true,
+              name: true,
               loginId: true,
             },
           },
@@ -268,7 +268,7 @@ export const fetchTableData = async (tableName: string): Promise<any> => {
         data = await prisma.user.findMany({
           select: {
             id: true,
-            fullName: true,
+            name: true,
             email: true,
             loginId: true,
             role: true,
@@ -284,7 +284,7 @@ export const fetchTableData = async (tableName: string): Promise<any> => {
             user: {
               select: {
                 id: true,
-                fullName: true,
+                name: true,
                 loginId: true,
               },
             },
@@ -314,7 +314,7 @@ export const fetchTableData = async (tableName: string): Promise<any> => {
             createdBy: {
               select: {
                 id: true,
-                fullName: true,
+                name: true,
                 email: true,
               },
             },
@@ -379,14 +379,14 @@ export const fetchTableData = async (tableName: string): Promise<any> => {
             createdBy: {
               select: {
                 id: true,
-                fullName: true,
+                name: true,
                 loginId: true,
               },
             },
             assignedTo: {
               select: {
                 id: true,
-                fullName: true,
+                name: true,
                 loginId: true,
               },
             },
@@ -423,7 +423,7 @@ export const fetchTableData = async (tableName: string): Promise<any> => {
             assignedTo: {
               select: {
                 id: true,
-                fullName: true,
+                name: true,
                 loginId: true,
               },
             },
@@ -480,7 +480,7 @@ export const fetchTableData = async (tableName: string): Promise<any> => {
             user: {
               select: {
                 id: true,
-                fullName: true,
+                name: true,
                 loginId: true,
               },
             },

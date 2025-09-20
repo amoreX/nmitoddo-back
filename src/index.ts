@@ -1,9 +1,9 @@
 import express from "express";
 import apiRoutes from "./routes";
-
+import cors from "cors";
 const app = express();
 const PORT = 3000;
-
+app.use(cors({ origin: "*" }));
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -12,7 +12,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (_req, res) => {
   res.json({
     success: true,
-    message: "NMIT Backend API is running 🚀",
+    message: "NMIT Backend API is running",
   });
 });
 
