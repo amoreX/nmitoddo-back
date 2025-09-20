@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-
+import prisma from "../prisma";
 export const loginUser = async (
   loginId: number,
   password: string,
