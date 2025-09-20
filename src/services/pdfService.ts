@@ -253,53 +253,30 @@ export class PDFService {
   }
 
   private addSection(doc: PDFKit.PDFDocument, title: string, data: { label: string; value: any }[]): void {
-    // Check if we need a new page
+    // Add section title
     if (doc.y > 700) {
       doc.addPage();
       doc.y = 50;
     }
-
-    // Section title
     doc.fontSize(12)
        .font('Helvetica-Bold')
        .text(title, 50, doc.y);
-    
     doc.y += 20;
 
-    // Create a simple table
-    const startY = doc.y;
     const columnWidth = 240;
-    
-    data.forEach((item, index) => {
-      const y = startY + (index * 20);
-      
-      // Check if we need a new page (with more margin for safety)
-      if (y > 700) {
+    data.forEach((item) => {
+      // If near bottom, add new page
+      if (doc.y > 750) {
         doc.addPage();
-        // Reset position after adding new page
-        const newStartY = 50;
-        const newY = newStartY + (index * 20);
-        
-        doc.fontSize(10)
-           .font('Helvetica')
-           .text(item.label, 70, newY)
-           .text(String(item.value), 70 + columnWidth, newY);
-        
-        doc.y = newY + 20;
-      } else {
-        doc.fontSize(10)
-           .font('Helvetica')
-           .text(item.label, 70, y)
-           .text(String(item.value), 70 + columnWidth, y);
+        doc.y = 50;
       }
-    });
-    
-    // Update y position safely
-    if (doc.y < startY + (data.length * 20)) {
-      doc.y = startY + (data.length * 20) + 20;
-    } else {
+      doc.fontSize(10)
+         .font('Helvetica')
+         .text(item.label, 70, doc.y)
+         .text(String(item.value), 70 + columnWidth, doc.y);
       doc.y += 20;
-    }
+    });
+    doc.y += 10; // Small gap after section
   }
 
   private addFooter(doc: PDFKit.PDFDocument, reportData: ReportData): void {

@@ -1,0 +1,10 @@
+
+add these additional details
+1.in manufacturing orders page , show product name as well as product id is present
+and in view details show BOM of the product as well
+2. in work orders show durationMins
+3. view details page of  work orders items
+4. show product name as well as product id is present so refer and get product name and operation
+5,  show product name again  and add view detials page for it as well
+
+6. make the filters work for each page as well
