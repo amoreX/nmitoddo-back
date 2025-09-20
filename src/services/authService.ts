@@ -61,6 +61,25 @@ export const signupService = async (
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    // Store session in database
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+    console.log("Creating session for new user:", newUser.id, "token length:", token.length);
+    
+    try {
+      const session = await prisma.session.create({
+        data: {
+          token,
+          userId: newUser.id,
+          expiresAt
+        }
+      });
+    } catch (sessionError) {
+      console.error("Failed to create session for new user:", sessionError);
+      // Continue with signup even if session creation fails
+    }
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = newUser;
 
@@ -121,6 +140,24 @@ export const loginService = async (
       { expiresIn: JWT_EXPIRES_IN }
     );
 
+    // Store session in database
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+    try {
+      const session = await prisma.session.create({
+        data: {
+          token,
+          userId: user.id,
+          expiresAt
+        }
+      });
+    } catch (sessionError) {
+      console.error("Failed to create session:", sessionError);
+      // Continue with login even if session creation fails
+      // This ensures the user can still log in
+    }
+
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
 
@@ -136,6 +173,74 @@ export const loginService = async (
       status: false,
       message: "An error occurred during login"
     };
+  }
+};
+
+/**
+ * Logout Service - Clean up session from database
+ */
+export const logoutService = async (token: string): Promise<AuthResponse> => {
+  try {
+    // Delete the session from database
+    await prisma.session.deleteMany({
+      where: { token }
+    });
+
+    return {
+      status: true,
+      message: "Logged out successfully"
+    };
+  } catch (error) {
+    console.error("Logout error:", error);
+    return {
+      status: false,
+      message: "An error occurred during logout"
+    };
+  }
+};
+
+/**
+ * Clean up expired sessions
+ */
+export const cleanupExpiredSessions = async (): Promise<void> => {
+  try {
+    const result = await prisma.session.deleteMany({
+      where: {
+        expiresAt: {
+          lt: new Date()
+        }
+      }
+    });
+    console.log("Cleaned up", result.count, "expired sessions");
+  } catch (error) {
+    console.error("Cleanup expired sessions error:", error);
+  }
+};
+
+/**
+ * Test session creation - for debugging
+ */
+export const testSessionCreation = async (): Promise<void> => {
+  try {
+    console.log("Testing session creation...");
+    
+    // Test creating a simple session
+    const testSession = await prisma.session.create({
+      data: {
+        token: "test-token-" + Date.now(),
+        userId: 1, // Assuming user ID 1 exists
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours from now
+      }
+    });
+    
+    // Clean it up
+    await prisma.session.delete({
+      where: { id: testSession.id }
+    });
+    
+    console.log("Test session cleaned up");
+  } catch (error) {
+    console.error("Test session creation failed:", error);
   }
 };
 

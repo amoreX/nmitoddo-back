@@ -6,8 +6,12 @@ import {
   updateMOPreset,
   deleteMOPreset,
 } from "../controllers/moPresetsController";
+import authMiddleware from "../middleware/authMiddleware";
 
 const router = Router();
+
+// Apply authentication middleware to all routes
+router.use(authMiddleware);
 
 // GET /api/moPresets - Get all MO presets
 router.get("/", getAllMOPresets);

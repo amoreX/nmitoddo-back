@@ -3,9 +3,23 @@ import { OrderStatus } from "@prisma/client";
 
 export const createManufacturingOrderService = async (
   createdById: number,
+  productId?: number,
+  quantity?: number,
+  scheduleStartDate?: string,
+  deadline?: string
 ): Promise<{ id: number; status: OrderStatus; createdById: number }> => {
-  const mo = await (prisma.manufacturingOrder as any).create({
-    data: { status: OrderStatus.draft, createdById },
+  const createData: any = { 
+    status: OrderStatus.draft, 
+    createdById
+  };
+  
+  if (productId !== undefined) createData.productId = productId;
+  if (quantity !== undefined) createData.quantity = quantity;
+  if (scheduleStartDate) createData.scheduleStartDate = new Date(scheduleStartDate);
+  if (deadline) createData.deadline = new Date(deadline);
+
+  const mo = await prisma.manufacturingOrder.create({
+    data: createData,
   });
   return mo;
 };

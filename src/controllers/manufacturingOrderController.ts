@@ -5,9 +5,18 @@ import {
 } from "../services/manufactureService";
 export const createManufacturingOrder = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.body;
+    const { userId, productId, quantity, scheduleStartDate, deadline } = req.body;
+    
+    // Use userId from body, or fallback to authenticated user ID, or default to 10
+    const createdById = userId || req.userId || 10;
 
-    const mo = await createManufacturingOrderService(userId);
+    const mo = await createManufacturingOrderService(
+      createdById,
+      productId,
+      quantity,
+      scheduleStartDate,
+      deadline
+    );
 
     res.status(201).json({ success: true, data: mo });
   } catch (error: any) {

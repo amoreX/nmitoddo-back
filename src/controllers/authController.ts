@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { signupService, loginService } from "../services/authService";
+import { signupService, loginService, testSessionCreation } from "../services/authService";
 
 /**
  * Signup Controller
@@ -102,6 +102,24 @@ export const loginController = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error"
+    });
+  }
+};
+
+/**
+ * Test Session Creation Controller - for debugging
+ */
+export const testSessionController = async (req: Request, res: Response) => {
+  try {
+    await testSessionCreation();
+    res.status(200).json({ 
+      success: true,
+      message: "Session test completed - check console logs" 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false,
+      message: "Session test failed: " + error.message 
     });
   }
 };

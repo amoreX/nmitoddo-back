@@ -1,0 +1,63 @@
+Absolutely! Here’s a **concise, judge-friendly summary** of what your reports will include across different periods:
+
+---
+
+### **1. Daily Report**
+
+* **New Manufacturing Orders:** count and details (product, quantity).
+* **Work Orders Activity:** started, paused, completed.
+* **Inventory Movements:** stock in/out per product.
+* **WorkCenter Downtime:** minutes lost.
+* **Exceptions & Alerts:** delayed orders, missed deadlines.
+
+---
+
+### **2. Weekly Report**
+
+* **MO Status Summary:** draft, in progress, completed, cancelled.
+* **WO Completion Rate:** planned vs actual.
+* **WorkCenter Utilization:** capacity used vs available.
+* **Top Products Manufactured.**
+* **Stock Changes:** opening vs closing, major inflows/outflows.
+
+---
+
+### **3. Monthly Report**
+
+* **Lead Times:** average planned vs actual for MOs.
+* **Work Order Productivity:** duration planned vs actual.
+* **Rejected/Cancelled Orders.**
+* **Stock Reconciliation:** ledger vs cached stock.
+* **WorkCenter Costs:** hours × cost per hour.
+
+---
+
+### **4. Quarterly Report**
+
+* **Production Trends:** MO volume, completion rates, stock usage.
+* **Capacity vs Demand Analysis:** for WorkCenters.
+* **BOM Variances:** planned vs actual usage of components.
+* **Productivity Bottlenecks & Improvements.**
+* **Cost Analysis:** materials vs operations.
+
+---
+
+### **5. Yearly Report**
+
+* **Total MO Output:** grouped by product.
+* **Annual Production Efficiency:** planned vs actual.
+* **WorkCenter Downtime & Cost of Inefficiency.**
+* **Inventory Turnover Rate.**
+* **Strategic KPIs:** on-time delivery %, average order size, utilization %.
+
+---
+
+* All reports are **data-driven** and stored in a **Report table** for audit and tracking.
+* Reports can be **downloaded as PDF**, making them easy to share or present.
+* Designed for **modularity and extensibility**, so new KPIs or metrics can be added without changing core logic.
+
+---
+
+If you want, I can also make a **1-slide “visual summary” table** showing all report types and their contents—very handy for judges. It’ll be super clear at a glance.
+
+Do you want me to do that?

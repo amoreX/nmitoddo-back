@@ -47,12 +47,18 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
         },
       }),
       prisma.session.findMany({
-        include: {
+        select: {
+          id: true,
+          token: true,  // Include the bearer token for testing
+          createdAt: true,
+          expiresAt: true,
+          userId: true,
           user: {
             select: {
               id: true,
               name: true,
               loginId: true,
+              role: true,  // Include role for better testing context
             },
           },
         },
@@ -281,12 +287,18 @@ export const fetchTableData = async (tableName: string): Promise<any> => {
 
       case 'sessions':
         data = await prisma.session.findMany({
-          include: {
+          select: {
+            id: true,
+            token: true,  // Include bearer tokens for testing
+            createdAt: true,
+            expiresAt: true,
+            userId: true,
             user: {
               select: {
                 id: true,
                 name: true,
                 loginId: true,
+                role: true,
               },
             },
           },

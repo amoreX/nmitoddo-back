@@ -13,19 +13,15 @@ export const createWorkCenter = async (req: Request, res: Response) => {
       });
     }
 
-    if (!userId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "User ID is required" 
-      });
-    }
+    // Use userId from body, or fallback to authenticated user ID, or default to 10
+    const createdById = userId || req.userId || 10;
 
     const workCenter = await createWorkCenterService({
       name,
       location,
       capacityPerHour,
       costPerHour,
-      createdById: userId,
+      createdById,
     });
 
     res.status(201).json({ success: true, data: workCenter });

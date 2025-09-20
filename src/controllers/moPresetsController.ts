@@ -6,19 +6,33 @@ import {
   updateMOPresetService,
   deleteMOPresetService,
 } from "../services/moPresetsService";
+import prisma from "../prisma";
 
 export const getAllMOPresets = async (req: Request, res: Response) => {
   try {
-    const userRole = (req as any).user?.role;
+    const userId = req.userId;
     
-    if (!userRole) {
+    if (!userId) {
       return res.status(401).json({
         status: false,
         message: "Authentication required",
       });
     }
 
-    const result = await getAllMOPresetsService(userRole);
+    // Get user role from database
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        status: false,
+        message: "User not found",
+      });
+    }
+
+    const result = await getAllMOPresetsService(user.role);
     
     if (result.status) {
       return res.status(200).json(result);
