@@ -7,5 +7,5 @@ export const createManufacturingOrderService = async (
   const mo = await (prisma.manufacturingOrder as any).create({
     data: { status: OrderStatus.draft, createdById },
   });
-  return { id: mo.id, status: mo.status, createdById: mo.created };
+  return mo;
 };
