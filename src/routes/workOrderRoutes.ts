@@ -3,6 +3,6 @@ import { createWorkOrder } from "../controllers/workOrderController";
 
 const workOrderRoutes = Router();
 
-workOrderRoutes.post("/addWO", createWorkOrder);
+workOrderRoutes.post("/new", createWorkOrder);
 
 export default workOrderRoutes;

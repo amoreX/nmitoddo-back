@@ -1,12 +1,26 @@
 import prisma from "../prisma";
-import { WorkOrder, WorkStatus } from "@prisma/client";
+import { WorkStatus, OrderStatus } from "@prisma/client";
 
-export const createWorkOrderService = async (
+export const createWorkOrderService = async ({
+  moId, operation, durationMins, comments, workCenterId
+}: {
   moId: number,
   operation: string,
-  durationMins  : number,
+  durationMins: number,
+  workCenterId: number,
   comments?: string,
-): Promise<WorkOrder> => {
+}) => {
+  // Validate input ID
+  if (moId == null) throw new Error("moIdis required");
+  // Validate Manufacturing Order exists
+  const mo = await prisma.manufacturingOrder.findUnique({
+    where: { id: moId },
+  });
+  if (!mo) throw new Error(`Manufacturing order ${moId} not found`);
+  // Only allow WO if MO is not cancelled or done
+  if (mo.status === OrderStatus.cancelled || mo.status === OrderStatus.done) {
+    throw new Error('Cannot create work order for cancelled or completed manufacturing order');
+  }
   const wo = await prisma.workOrder.create({
     data: {
       moId: moId,
@@ -14,6 +28,11 @@ export const createWorkOrderService = async (
       operation: operation,
       durationMins: durationMins,
       comments: comments ? comments : "",
+      workCenterId: workCenterId,
+      // Optional defaults
+      assignedToId: null,
+      startedAt: null,
+      completedAt: null,
     },
   });
   return wo;

@@ -4,6 +4,7 @@ import {
   draftManufacturingOrder,
 } from "../controllers/manufacturingOrderController";
 
+
 const manufacturingOrderRoutes = Router();
 
 // Create a new Manufacturing Order

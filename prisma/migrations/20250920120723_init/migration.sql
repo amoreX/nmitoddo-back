@@ -1,11 +1,11 @@
 -- CreateEnum
-CREATE TYPE "public"."Role" AS ENUM ('admin', 'manager', 'inventory_manager', 'operator');
+CREATE TYPE "public"."Role" AS ENUM ('admin', 'manager', 'user');
 
 -- CreateEnum
-CREATE TYPE "public"."OrderStatus" AS ENUM ('planned', 'in_progress', 'done', 'canceled');
+CREATE TYPE "public"."OrderStatus" AS ENUM ('draft', 'confirmed', 'in_progress', 'to_close', 'done', 'cancelled');
 
 -- CreateEnum
-CREATE TYPE "public"."WorkStatus" AS ENUM ('planned', 'started', 'paused', 'completed');
+CREATE TYPE "public"."WorkStatus" AS ENUM ('to_do', 'started', 'paused', 'completed');
 
 -- CreateEnum
 CREATE TYPE "public"."MovementType" AS ENUM ('in', 'out');
@@ -15,8 +15,9 @@ CREATE TABLE "public"."User" (
     "id" SERIAL NOT NULL,
     "fullName" TEXT NOT NULL,
     "email" TEXT NOT NULL,
+    "loginId" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
-    "role" "public"."Role" NOT NULL,
+    "role" "public"."Role" NOT NULL DEFAULT 'user',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -48,11 +49,10 @@ CREATE TABLE "public"."Product" (
 -- CreateTable
 CREATE TABLE "public"."BillOfMaterial" (
     "id" SERIAL NOT NULL,
-    "quantity" DOUBLE PRECISION NOT NULL,
-    "operation" TEXT,
-    "estimatedTimeMins" INTEGER,
     "productId" INTEGER NOT NULL,
+    "operation" TEXT,
     "componentId" INTEGER NOT NULL,
+    "quantity" DOUBLE PRECISION NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "BillOfMaterial_pkey" PRIMARY KEY ("id")
@@ -61,13 +61,13 @@ CREATE TABLE "public"."BillOfMaterial" (
 -- CreateTable
 CREATE TABLE "public"."ManufacturingOrder" (
     "id" SERIAL NOT NULL,
-    "quantity" INTEGER NOT NULL,
+    "quantity" INTEGER,
     "scheduleStartDate" TIMESTAMP(3),
     "deadline" TIMESTAMP(3),
     "status" "public"."OrderStatus" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "productId" INTEGER NOT NULL,
+    "productId" INTEGER,
     "createdById" INTEGER NOT NULL,
     "assignedToId" INTEGER,
 
@@ -83,6 +83,8 @@ CREATE TABLE "public"."WorkOrder" (
     "startedAt" TIMESTAMP(3),
     "completedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "durationMins" INTEGER NOT NULL,
+    "durationDoneMins" INTEGER NOT NULL DEFAULT 0,
     "moId" INTEGER NOT NULL,
     "workCenterId" INTEGER,
     "assignedToId" INTEGER,
@@ -99,12 +101,13 @@ CREATE TABLE "public"."WorkCenter" (
     "costPerHour" DOUBLE PRECISION,
     "downtimeMins" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdById" INTEGER NOT NULL,
 
     CONSTRAINT "WorkCenter_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "public"."StockLedger" (
+CREATE TABLE "public"."ProductLedger" (
     "id" SERIAL NOT NULL,
     "movementType" "public"."MovementType" NOT NULL,
     "quantity" DOUBLE PRECISION NOT NULL,
@@ -112,9 +115,18 @@ CREATE TABLE "public"."StockLedger" (
     "referenceId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "productId" INTEGER NOT NULL,
-    "createdById" INTEGER NOT NULL,
 
-    CONSTRAINT "StockLedger_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ProductLedger_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "public"."ProductStock" (
+    "id" SERIAL NOT NULL,
+    "productId" INTEGER NOT NULL,
+    "quantity" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "ProductStock_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -131,6 +143,12 @@ CREATE TABLE "public"."Report" (
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "public"."User"("email");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "User_loginId_key" ON "public"."User"("loginId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProductStock_productId_key" ON "public"."ProductStock"("productId");
+
 -- AddForeignKey
 ALTER TABLE "public"."Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -141,7 +159,7 @@ ALTER TABLE "public"."BillOfMaterial" ADD CONSTRAINT "BillOfMaterial_productId_f
 ALTER TABLE "public"."BillOfMaterial" ADD CONSTRAINT "BillOfMaterial_componentId_fkey" FOREIGN KEY ("componentId") REFERENCES "public"."Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."ManufacturingOrder" ADD CONSTRAINT "ManufacturingOrder_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."ManufacturingOrder" ADD CONSTRAINT "ManufacturingOrder_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."Product"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."ManufacturingOrder" ADD CONSTRAINT "ManufacturingOrder_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -159,108 +177,13 @@ ALTER TABLE "public"."WorkOrder" ADD CONSTRAINT "WorkOrder_workCenterId_fkey" FO
 ALTER TABLE "public"."WorkOrder" ADD CONSTRAINT "WorkOrder_assignedToId_fkey" FOREIGN KEY ("assignedToId") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."StockLedger" ADD CONSTRAINT "StockLedger_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."WorkCenter" ADD CONSTRAINT "WorkCenter_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "public"."StockLedger" ADD CONSTRAINT "StockLedger_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "public"."ProductLedger" ADD CONSTRAINT "ProductLedger_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."ProductStock" ADD CONSTRAINT "ProductStock_productId_fkey" FOREIGN KEY ("productId") REFERENCES "public"."Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."Report" ADD CONSTRAINT "Report_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- ===============================
--- ENABLE ROW LEVEL SECURITY
--- ===============================
-
-ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "ManufacturingOrder" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "WorkOrder" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "StockLedger" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Report" ENABLE ROW LEVEL SECURITY;
-
--- ===============================
--- USER TABLE POLICIES
--- ===============================
-
--- Users can see their own record
-CREATE POLICY user_self_access ON "User"
-    FOR SELECT USING (id::text = current_setting('app.current_user_id', true));
-
--- Admin can do anything
-CREATE POLICY user_admin_access ON "User"
-    FOR ALL USING (
-        (SELECT role FROM "User" WHERE id::text = current_setting('app.current_user_id', true)) = 'admin'
-    );
-
--- ===============================
--- MANUFACTURING ORDER POLICIES
--- ===============================
-
--- Admin & Manager full access
-CREATE POLICY mo_manager_access ON "ManufacturingOrder"
-    FOR ALL USING (
-        (SELECT role FROM "User" WHERE id::text = current_setting('app.current_user_id', true)) 
-        IN ('admin','manager')
-    );
-
--- Operator can only see assigned orders
-CREATE POLICY mo_operator_access ON "ManufacturingOrder"
-    FOR SELECT USING (
-        assignedToId::text = current_setting('app.current_user_id', true)
-    );
-
--- ===============================
--- WORK ORDER POLICIES
--- ===============================
-
--- Admin & Manager full access
-CREATE POLICY wo_manager_access ON "WorkOrder"
-    FOR ALL USING (
-        (SELECT role FROM "User" WHERE id::text = current_setting('app.current_user_id', true))
-        IN ('admin','manager')
-    );
-
--- Operator can only see & update their own WOs
-CREATE POLICY wo_operator_access ON "WorkOrder"
-    FOR SELECT USING (assignedToId::text = current_setting('app.current_user_id', true))
-    WITH CHECK (assignedToId::text = current_setting('app.current_user_id', true));
-
--- ===============================
--- STOCK LEDGER POLICIES
--- ===============================
-
--- Admin & Inventory manager full access
-CREATE POLICY stock_inventory_access ON "StockLedger"
-    FOR ALL USING (
-        (SELECT role FROM "User" WHERE id::text = current_setting('app.current_user_id', true))
-        IN ('admin','inventory_manager')
-    );
-
--- Manager can read only
-CREATE POLICY stock_manager_read ON "StockLedger"
-    FOR SELECT USING (
-        (SELECT role FROM "User" WHERE id::text = current_setting('app.current_user_id', true)) = 'manager'
-    );
-
--- ===============================
--- REPORT POLICIES
--- ===============================
-
--- Users can see their own reports
-CREATE POLICY report_self_access ON "Report"
-    FOR SELECT USING (
-        userId::text = current_setting('app.current_user_id', true)
-    );
-
--- Admin & Manager can access all reports
-CREATE POLICY report_manager_access ON "Report"
-    FOR ALL USING (
-        (SELECT role FROM "User" WHERE id::text = current_setting('app.current_user_id', true)) 
-        IN ('admin','manager')
-    );
-
--- ===============================
--- Notes
--- Your app must set app.current_user_id on each DB session:
--- SELECT set_config('app.current_user_id', '<user_id>', true);
--- RLS enforces row-level access in Postgres, independent of Prisma client queries.
--- This gives full RLS coverage for all main tables in your schema.

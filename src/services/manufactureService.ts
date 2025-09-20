@@ -19,34 +19,25 @@ export const saveDraftManufacturingOrderService = async (
       id: moData.id,
     },
     update: {
-      id: moData.id,
       createdById: moData.createdById,
-      productId: moData.productId,
       quantity: moData.quantity,
-      scheduleStartDate: moData.scheduleStartDate,
-      deadline: moData.deadline,
-      assignedToId: moData.assignedToId,
       status: "draft",
-      product: moData.productId
-        ? {
-            connect: { id: moData.productId },
-          }
-        : undefined,
+      // Conditionally include optional fields
+      ...(moData.productId !== undefined && { productId: moData.productId }),
+      ...(moData.scheduleStartDate !== undefined && { scheduleStartDate: moData.scheduleStartDate }),
+      ...(moData.deadline !== undefined && { deadline: moData.deadline }),
+      ...(moData.assignedToId !== undefined && { assignedToId: moData.assignedToId }),
     },
     create: {
       id: moData.id,
       createdById: moData.createdById,
-      productId: moData.productId,
       quantity: moData.quantity,
-      scheduleStartDate: moData.scheduleStartDate,
-      deadline: moData.deadline,
-      assignedToId: moData.assignedToId,
       status: "draft",
-      product: moData.productId
-        ? {
-            connect: { id: moData.productId },
-          }
-        : undefined,
+      // Conditionally include optional fields
+      ...(moData.productId !== undefined && { productId: moData.productId }),
+      ...(moData.scheduleStartDate !== undefined && { scheduleStartDate: moData.scheduleStartDate }),
+      ...(moData.deadline !== undefined && { deadline: moData.deadline }),
+      ...(moData.assignedToId !== undefined && { assignedToId: moData.assignedToId }),
     },
   });
 
