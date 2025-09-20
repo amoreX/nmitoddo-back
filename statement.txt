@@ -1,0 +1,149 @@
+Problem Statement 1 : -
+You can choose any one problem
+statement out of given two!
+All the best!
+Manufacturing - From Order to Output, All in One Flow
+Problem Statement
+Develop a modular manufacturing management application that enables businesses to
+create, track, and manage their end-to-end production process digitally.The platform
+aims to replace fragmented spreadsheets and manual tracking with a centralized,
+user-friendly platform.
+Key Challenges in Existing Manufacturing Process:
+1. Fragmented systems for manufacturing orders, stock management, and BOM
+(Bill of Materials).
+2. Lack of visibility into production stages and work order progress.
+3. No dynamic filtering/dashboard to quickly see order status.
+4. Limited integration between stock, production, and reporting.
+5. Manual paperwork for BOMs, stock ledgers, and reports → prone to errors.
+Target Users
+1. Manufacturing Managers – oversee production orders and workflows.
+2. Operators / Shop-floor Workers – execute assigned work orders and update
+status.
+3. Inventory Managers – track stock movement, raw material usage, and ledger
+balance.
+4. Business Owners / Admins – monitor overall production KPIs, generate reports,
+and ensure traceability.
+Use Case Scenarios
+1. Authentication & Access
+○ User signs up/logs in.
+○ Redirected to Manufacturing App Dashboard.
+2. Dashboard & Filtering
+○ The landing page lists all manufacturing orders.
+○ Dynamic dashboard filter → by order state (Planned, In Progress, Done,
+Canceled).
+3. Navigation via Master Menu (Right Sidebar)
+○ Manufacturing Orders: Create and track production orders.(same app
+dashboard)
+○ Work Orders: Assign and manage work steps for operators.
+○ Work Centers: Manage machines/locations capacity, downtime, and
+utilization.
+○ Stock Ledger: Track material movement and inventory balance.
+○ Bills of Material (BOM): Define material requirements per finished good.
+4. Profile & Setup (Left Sidebar)
+○ Click avatar → side profile menu opens.
+○ Options: My Profile, My Reports.
+Authentication
+● Common Login/Signup Page for all users.
+● OTP verification for forgot password.
+Core Features
+End User (Manufacturing Manager / Admin/ User)
+● Dashboard View:
+○ Real-time list of all manufacturing orders.
+○ Component availability
+○ Filters by status/state.
+○ Quick KPIs: Orders completed, in-progress, delayed.
+● Manufacturing Orders:
+○ Create/edit/delete production orders.
+○ Attach BOMs, work centers, deadlines.
+○ Track progress & dependencies.
+● Work Orders:
+○ Assign to operators.
+○ Track status updates (Started, Paused, Completed).
+○ Capture comments, issues, delays.
+● Work Centers:
+○ Work Center costing per hour
+● Stock Ledger:
+○ Real-time movement of raw materials & finished goods.
+○ Automatic updates after work order completion.
+○ Product creation and maintain stock
+● BOM (Bill of Materials):
+○ Set material quantities,components and work orders
+○ Link BOM to manufacturing orders.
+Profile & Reports
+● Profile Menu (Left Side):
+○ My Profile – update personal details, password.
+Profile Reports – view own completed work orders or tasks also check
+total work duration report.
+Additional Features
+● Analytics dashboard: Production throughput, order delays, resource utilization.
+● Exportable reports (Excel/PDF) for user.
+● Scalable architecture → new modules (Quality Check, Maintenance) can be
+added later.
+Mockup: See the Blueprint
+Go d to k o co p in Man tu g
+● Bill of Materials (BoM): Recipe of raw materials and operations needed to make a
+product.
+● Manufacturing Order (MO): A process form to manufacture a product of a defined
+quantity.
+● Work Orders (WO):Operations/ Jobs required to manufacture a product
+● Work Centers: Machines/ Workshop where manufacturing operations take place.
+● Stock Ledger/ Product Master : Create products and maintain stock availability.
+Understanding Bill of Materials (BoM)
+● A BoM defines how a product is built.
+● It lists components (raw materials) required to make a finished product.
+Example:
+Product: Wooden Table – Quantity –1 Unit
+BoM Recipe
+Components Operations
+4 × Wooden Legs Assembly -60 mmins
+1 × Wooden Top Painting -30 mins
+12 × Screws Packing -20 mins
+1 × Varnish Bottle
+When an MO is created for 1 Wooden Table, It should automatically populate the recipe and
+adjust the recipe based on MO quantity to be produced.
+Manufacturing Order (MO)
+● Once you have a requirement for a Wooden Table, create a Manufacturing Order (MO)to
+manufacture it.
+● The MO should contain:
+○ Finished Product (what to produce).
+○ Quantity to produce.
+○ Schedule Start Date
+○ Assignee
+○ Raw Materials (auto-fetched from BoM).
+Work Order/Operations
+● A Work Order (WO) is a step in the manufacturing process.
+● When you confirm a Manufacturing Order (MO), it allows you to work on operations with
+a start/pause button.
+Example: To produce a Wooden Table:
+Assembly @ Assembly LIne for 60 mins
+Painting @ Paint Floor for 30 mins
+Packing @ Packaging Line for 20 mins
+Each of these steps is a Work Order under the same MO.
+Work Center
+● A Work Center is a physical location, machine, or team where a Work Order is executed.
+Example:
+● Assembly Line → Work Center for Assembly step.
+● Paint Floor → Work Center for Painting
+● Packaging Line → Work Center for Packaging.
+Production of Finished Goods
+● After consumption, the system adds finished goods to stock.
+● This increases the inventory of the final product (tables, chairs, etc.).
+Stock Ledger / Product Master
+● The Stock Ledger records every material movement in the system.
+Example (from file flow): When making 10 Units Wooden Tables:
+Wha Stu t Ne d to Un e s d
+● MO is the big container → Holds everything.
+● WO are sub-steps → Break MO into tasks.
+● Work Centers are resources → Where the tasks are executed.
+● Stock Ledger is the evidence → Tracks every material in & out and show available
+stock
+● Stock Out (Consumption)
+Negative Product Movement
+Legs: - 40 Units
+Tops: -10 Units
+Screws: -120 Units
+Varnish: -10 Bottles
+● Stock In (Production)
+Positive Product Movement
+Tables: +10 Units
+    

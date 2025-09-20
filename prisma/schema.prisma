@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  fullName      String
+  email         String    @unique
+  passwordHash  String
+  role          Role
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  createdMOs    ManufacturingOrder[] @relation("CreatedBy")
+  assignedMOs   ManufacturingOrder[] @relation("AssignedTo")
+  assignedWOs   WorkOrder[]          @relation("WOAssigned")
+  createdLedger StockLedger[]
+  reports       Report[]
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  token     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  admin
+  manager
+  inventory_manager
+  operator
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  unit        String    @default("unit")
+  createdAt   DateTime  @default(now())
+
+  bomComponents BillOfMaterial[] @relation("Component")
+  bomProducts   BillOfMaterial[] @relation("Product")
+  manufacturingOrders ManufacturingOrder[]
+  stockLedger   StockLedger[]
+}
+
+model BillOfMaterial {
+  id               Int     @id @default(autoincrement())
+  quantity         Float
+  operation        String?
+  estimatedTimeMins Int?
+
+  productId   Int
+  product     Product @relation("Product", fields: [productId], references: [id], onDelete: Cascade)
+
+  componentId Int
+  component   Product @relation("Component", fields: [componentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+/// ---------------- MANUFACTURING ORDERS ----------------
+model ManufacturingOrder {
+  id          Int       @id @default(autoincrement())
+  quantity    Int
+  scheduleStartDate DateTime?
+  deadline    DateTime?
+  status      OrderStatus
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  createdById Int
+  createdBy   User @relation("CreatedBy", fields: [createdById], references: [id])
+
+  assignedToId Int?
+  assignedTo   User? @relation("AssignedTo", fields: [assignedToId], references: [id])
+
+  workOrders WorkOrder[]
+}
+
+enum OrderStatus {
+  planned
+  in_progress
+  done
+  canceled
+}
+
+/// ---------------- WORK ORDERS ----------------
+model WorkOrder {
+  id          Int       @id @default(autoincrement())
+  operation   String
+  status      WorkStatus
+  comments    String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  moId Int
+  mo   ManufacturingOrder @relation(fields: [moId], references: [id], onDelete: Cascade)
+
+  workCenterId Int?
+  workCenter   WorkCenter? @relation(fields: [workCenterId], references: [id])
+
+  assignedToId Int?
+  assignedTo   User? @relation("WOAssigned", fields: [assignedToId], references: [id])
+}
+
+enum WorkStatus {
+  planned
+  started
+  paused
+  completed
+}
+
+/// ---------------- WORK CENTERS ----------------
+model WorkCenter {
+  id             Int       @id @default(autoincrement())
+  name           String
+  location       String?
+  capacityPerHour Float?
+  costPerHour    Float?
+  downtimeMins   Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  workOrders WorkOrder[]
+}
+
+/// ---------------- STOCK LEDGER ----------------
+model StockLedger {
+  id           Int       @id @default(autoincrement())
+  movementType MovementType
+  quantity     Float
+  referenceType String?
+  referenceId   Int?
+  createdAt    DateTime @default(now())
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  createdById Int
+  createdBy   User @relation(fields: [createdById], references: [id])
+}
+
+enum MovementType {
+  in
+  out
+}
+
+/// ---------------- REPORTS ----------------
+model Report {
+  id          Int       @id @default(autoincrement())
+  reportType  String
+  data        Json
+  generatedAt DateTime @default(now())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+}

@@ -1,0 +1,14 @@
+ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ManufacturingOrder" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "WorkOrder" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "StockLedger" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Report" ENABLE ROW LEVEL SECURITY;
+
+-- Example: Users can only see themselves unless admin
+CREATE POLICY user_self_access ON "User"
+    FOR SELECT USING (id::text = current_setting('app.current_user_id', true));
+
+CREATE POLICY user_admin_access ON "User"
+    FOR ALL USING (
+        (SELECT role FROM "User" WHERE id::text = current_setting('app.current_user_id', true)) = 'admin'
+    );
