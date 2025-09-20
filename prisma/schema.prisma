@@ -66,10 +66,9 @@ model BillOfMaterial {
   id          Int      @id @default(autoincrement())
   productId   Int
   product     Product  @relation("ProductBOM", fields: [productId], references: [id], onDelete: Cascade)
-
+  operation   String?  
   componentId Int
   component   Product  @relation("ComponentBOM", fields: [componentId], references: [id], onDelete: Cascade)
-
   quantity    Float
   createdAt   DateTime @default(now())
 }
@@ -85,7 +84,7 @@ model ManufacturingOrder {
   
   productId Int?
   product   Product? @relation(fields: [productId], references: [id])
-
+  
   createdById Int
   createdBy   User @relation("CreatedBy", fields: [createdById], references: [id])
 
@@ -114,7 +113,7 @@ model WorkOrder {
   createdAt   DateTime @default(now())
   durationMins Int
   durationDoneMins Int @default(0)
-  
+
   moId Int
   mo   ManufacturingOrder @relation(fields: [moId], references: [id], onDelete: Cascade)
 
