@@ -24,7 +24,7 @@ interface AuthResponse {
 export const signupService = async (
   loginId: string,
   pwd: string,
-  name?: string
+  email: string
 ): Promise<AuthResponse> => {
   try {
     // Check if user already exists by loginId
@@ -46,9 +46,9 @@ export const signupService = async (
     // Create new user
     const newUser = await prisma.user.create({
       data: {
-        email: loginId, // Use loginId as email for backward compatibility
+        email: email, // Use loginId as email for backward compatibility
         password: hashedPassword,
-        name: name || null,
+        name:  null,
         loginId: loginId,
         role: "user" // default role
       }

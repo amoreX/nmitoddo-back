@@ -11,7 +11,7 @@ import { signupService, loginService, testSessionCreation, updateUserService, lo
  * }
  */
 export const signupController = async (req: Request, res: Response) => {
-  const { loginId, pwd, name } = req.body;
+  const { loginId, pwd, email } = req.body;
 
   // Validate required fields
   if (!loginId || !pwd) {
@@ -38,7 +38,7 @@ export const signupController = async (req: Request, res: Response) => {
   }
 
   try {
-    const result = await signupService(loginId, pwd, name);
+    const result = await signupService(loginId, pwd, email);
 
     if (result.status) {
       return res.status(201).json({

@@ -246,8 +246,29 @@ export const createManufacturingOrderService = async (
 export const saveDraftManufacturingOrderService = async (
   moData: MODraftInput,
 ) => {
+  // Validate that productId is provided (required for BOM lookup)
+  if (!moData.productId) {
+    throw new Error("Product ID is required for manufacturing order");
+  }
+
+  // Check if product exists and has BOM
+  const product = await prisma.product.findUnique({
+    where: { id: moData.productId },
+    include: {
+      bom: {
+        include: {
+          component: true
+        }
+      }
+    }
+  });
+
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
   // Update product if product data is provided
-  if (moData.product && moData.productId) {
+  if (moData.product) {
     await prisma.product.update({
       where: { id: moData.productId },
       data: {
@@ -258,17 +279,16 @@ export const saveDraftManufacturingOrderService = async (
     });
   }
 
-  // Create the manufacturing order
+  // Create or update the manufacturing order
   const mo = await prisma.manufacturingOrder.upsert({
     where: {
       id: moData.id,
     },
     update: {
       createdById: moData.createdById,
+      productId: moData.productId,
       quantity: moData.quantity,
       status: "draft",
-      // Conditionally include optional fields
-      ...(moData.productId !== undefined && { productId: moData.productId }),
       ...(moData.scheduleStartDate !== undefined && { scheduleStartDate: moData.scheduleStartDate }),
       ...(moData.deadline !== undefined && { deadline: moData.deadline }),
       ...(moData.assignedToId !== undefined && { assignedToId: moData.assignedToId }),
@@ -276,54 +296,73 @@ export const saveDraftManufacturingOrderService = async (
     create: {
       id: moData.id,
       createdById: moData.createdById,
+      productId: moData.productId,
       quantity: moData.quantity,
       status: "draft",
-      // Conditionally include optional fields
-      ...(moData.productId !== undefined && { productId: moData.productId }),
       ...(moData.scheduleStartDate !== undefined && { scheduleStartDate: moData.scheduleStartDate }),
       ...(moData.deadline !== undefined && { deadline: moData.deadline }),
       ...(moData.assignedToId !== undefined && { assignedToId: moData.assignedToId }),
     },
   });
 
-  // Update BOM components if provided
-  if (moData.bomIds && moData.bomIds.length > 0) {
-    for (const bomId of moData.bomIds) {
-      const bomData = moData.components?.find(comp => comp.id === bomId);
-      if (bomData) {
+  // Handle BOM updates if provided (only update fields that changed)
+  if (moData.bomUpdates && moData.bomUpdates.length > 0) {
+    for (const bomUpdate of moData.bomUpdates) {
+      // Validate that BOM entry belongs to the correct product
+      if (bomUpdate.productId !== moData.productId) {
+        throw new Error(`BOM entry ${bomUpdate.id} does not belong to product ${moData.productId}`);
+      }
+
+      // Verify BOM entry exists and belongs to the product
+      const existingBOM = await prisma.billOfMaterial.findUnique({
+        where: { id: bomUpdate.id }
+      });
+
+      if (!existingBOM) {
+        throw new Error(`BOM entry with ID ${bomUpdate.id} not found`);
+      }
+
+      if (existingBOM.productId !== moData.productId) {
+        throw new Error(`BOM entry ${bomUpdate.id} belongs to product ${existingBOM.productId}, not ${moData.productId}`);
+      }
+
+      const updateData: any = {};
+      
+      // Only update fields that are provided
+      if (bomUpdate.quantity !== undefined) updateData.quantity = bomUpdate.quantity;
+      if (bomUpdate.operation !== undefined) updateData.operation = bomUpdate.operation;
+      if (bomUpdate.opDurationMins !== undefined) updateData.opDurationMins = bomUpdate.opDurationMins;
+      
+      // Only update if there are changes
+      if (Object.keys(updateData).length > 0) {
         await prisma.billOfMaterial.update({
-          where: { id: bomId },
-          data: {
-            componentId: bomData.componentId,
-            quantity: bomData.quantity,
-            ...(bomData.operation !== undefined && { operation: bomData.operation }),
-            ...(bomData.opDurationMins !== undefined && { opDurationMins: bomData.opDurationMins }),
-          },
+          where: { id: bomUpdate.id },
+          data: updateData,
         });
       }
     }
   }
 
-  // Update work orders if provided
-  if (moData.workOrderIds && moData.workOrderIds.length > 0) {
-    for (const workOrderId of moData.workOrderIds) {
-      const woData = moData.workOrders?.find(wo => wo.id === workOrderId);
-      if (woData) {
-        await prisma.workOrder.update({
-          where: { id: workOrderId },
-          data: {
-            operation: woData.operation,
-            status: woData.status,
-            durationMins: woData.durationMins,
-            ...(woData.comments !== undefined && { comments: woData.comments }),
-            ...(woData.workCenterId !== undefined && { workCenterId: woData.workCenterId }),
-            ...(woData.assignedToId !== undefined && { assignedToId: woData.assignedToId }),
-            ...(woData.startedAt !== undefined && { startedAt: woData.startedAt }),
-            ...(woData.completedAt !== undefined && { completedAt: woData.completedAt }),
-            ...(woData.durationDoneMins !== undefined && { durationDoneMins: woData.durationDoneMins }),
-          },
-        });
-      }
+  // Handle work orders if provided
+  if (moData.workOrders && moData.workOrders.length > 0) {
+    // Delete existing work orders for this MO
+    await prisma.workOrder.deleteMany({
+      where: { moId: mo.id }
+    });
+
+    // Create new work orders
+    for (const woData of moData.workOrders) {
+      await prisma.workOrder.create({
+        data: {
+          moId: mo.id,
+          operation: woData.operation,
+          status: woData.status || "to_do",
+          durationMins: woData.durationMins,
+          comments: woData.comments || null,
+          workCenterId: woData.workCenterId || null,
+          assignedToId: woData.assignedToId || null,
+        },
+      });
     }
   }
 
@@ -388,23 +427,29 @@ interface ComponentInput {
   opDurationMins?: number;
 }
 
+interface BOMUpdateInput {
+  id: number; // BOM entry ID (required to identify which BOM entry to update)
+  productId: number; // Product ID (required for validation - must match MO's productId)
+  quantity?: number; // Only send if quantity changed
+  operation?: string; // Only send if operation changed
+  opDurationMins?: number; // Only send if duration changed
+  // componentId is NOT changeable - that would be creating a new BOM entry
+}
+
 interface WorkOrderInput {
-  id?: number; // Work Order ID for updates
+  id?: number; // Optional - if provided, update existing; if not, create new
   operation: string;
-  status: "to_do" | "started" | "paused" | "completed";
+  status?: WorkStatus;
   comments?: string;
+  durationMins: number;
   workCenterId?: number;
   assignedToId?: number;
-  startedAt?: Date;
-  completedAt?: Date;
-  durationMins: number;
-  durationDoneMins?: number;
 }
 
 interface MODraftInput {
   id: number;
   createdById: number;
-  productId?: number;
+  productId: number; // Made required since we need it for BOM lookup
   product?: { // Product field updates
     name?: string;
     description?: string;
@@ -414,10 +459,8 @@ interface MODraftInput {
   scheduleStartDate?: Date;
   deadline?: Date;
   assignedToId?: number;
-  components?: ComponentInput[];
-  workOrders?: WorkOrderInput[];
-  bomIds?: number[]; // List of BOM IDs to update
-  workOrderIds?: number[]; // List of Work Order IDs to update
+  bomUpdates?: BOMUpdateInput[]; // Only modified BOM fields (not full objects)
+  workOrders?: WorkOrderInput[]; // Full work order objects (MO-specific)
   status: string;
 }
 

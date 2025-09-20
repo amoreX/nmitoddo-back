@@ -69,7 +69,17 @@ app.post("/resetpass", async (req, res) => {
   // Update password
   try {
     const hash = await bcrypt.hash(newPass, 10);
-    const user = await prisma.user.update({ where: { email }, data: { password: hash } });
+    // const user = await prisma.user.update({ where: { email }, data: { password: hash } });
+    const userName = await prisma.user.findUnique({ where: { email } }).then(u => u?.name || "");
+    const loginId = await prisma.user.findUnique({ where: { email } }).then(u => u?.loginId || "");
+
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { password: hash },
+      create: { email, loginId, password: hash, name: userName }
+    });
+    if (!user) throw new Error("User not found");
+    // Success - remove OTP entry
     delete otpMap[email];
     console.log("Password updated for email:", email);
     res.json({ success: true, message: "Password updated" });

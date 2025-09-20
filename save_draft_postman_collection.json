@@ -1,0 +1,490 @@
+{
+  "info": {
+    "name": "Manufacturing Order Save Draft Tests",
+    "description": "Comprehensive tests for save draft with complex relations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Basic Save Draft with Product Relations",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 160,\n  \"userId\": 25,\n  \"productId\": 109,\n  \"quantity\": 5,\n  \"scheduleStartDate\": \"2025-09-25T08:00:00.000Z\",\n  \"deadline\": \"2025-10-10T17:00:00.000Z\",\n  \"assignedToId\": 26\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Response has success true', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.success).to.be.true;",
+              "});",
+              "pm.test('MO created with correct product', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.product.id).to.eql(109);",
+              "    pm.expect(jsonData.data.quantity).to.eql(5);",
+              "    pm.expect(jsonData.data.status).to.eql('draft');",
+              "});",
+              "pm.test('BOM components auto-derived', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.product.bom).to.be.an('array');",
+              "    pm.expect(jsonData.data.product.bom.length).to.be.greaterThan(0);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Save Draft with Product Updates",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 161,\n  \"userId\": 26,\n  \"productId\": 108,\n  \"product\": {\n    \"name\": \"Premium Dining Table - Oak\",\n    \"description\": \"6-seater premium oak dining table with enhanced finish\"\n  },\n  \"quantity\": 3,\n  \"assignedToId\": 27\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Product updated with new details', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.product.name).to.eql('Premium Dining Table - Oak');",
+              "    pm.expect(jsonData.data.product.description).to.include('enhanced finish');",
+              "});",
+              "pm.test('Assigned user is correct', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.assignedTo.id).to.eql(27);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Save Draft with BOM Updates",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 162,\n  \"userId\": 25,\n  \"productId\": 110,\n  \"quantity\": 2,\n  \"bomUpdates\": [\n    {\n      \"id\": 77,\n      \"productId\": 110,\n      \"quantity\": 6,\n      \"opDurationMins\": 60\n    },\n    {\n      \"id\": 78,\n      \"productId\": 110,\n      \"operation\": \"Premium Painting\",\n      \"opDurationMins\": 50\n    }\n  ],\n  \"assignedToId\": 26\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('BOM entries updated correctly', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const bom = jsonData.data.product.bom;",
+              "    const bomEntry77 = bom.find(b => b.id === 77);",
+              "    const bomEntry78 = bom.find(b => b.id === 78);",
+              "    pm.expect(bomEntry77.quantity).to.eql(6);",
+              "    pm.expect(bomEntry77.opDurationMins).to.eql(60);",
+              "    pm.expect(bomEntry78.operation).to.eql('Premium Painting');",
+              "    pm.expect(bomEntry78.opDurationMins).to.eql(50);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Save Draft with Work Orders",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 163,\n  \"userId\": 26,\n  \"productId\": 109,\n  \"quantity\": 4,\n  \"workOrders\": [\n    {\n      \"operation\": \"Assembly\",\n      \"status\": \"to_do\",\n      \"durationMins\": 45,\n      \"workCenterId\": 19,\n      \"assignedToId\": 27\n    },\n    {\n      \"operation\": \"Painting\",\n      \"status\": \"to_do\", \n      \"durationMins\": 25,\n      \"workCenterId\": 20,\n      \"assignedToId\": 26\n    },\n    {\n      \"operation\": \"Quality Check\",\n      \"status\": \"to_do\",\n      \"durationMins\": 15,\n      \"workCenterId\": 21,\n      \"assignedToId\": 25\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Work orders created correctly', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.workOrders).to.have.lengthOf(3);",
+              "    const assemblyWO = jsonData.data.workOrders.find(wo => wo.operation === 'Assembly');",
+              "    pm.expect(assemblyWO.workCenter.id).to.eql(19);",
+              "    pm.expect(assemblyWO.assignedTo.id).to.eql(27);",
+              "    pm.expect(assemblyWO.durationMins).to.eql(45);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Complete Save Draft with All Relations",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 164,\n  \"userId\": 25,\n  \"productId\": 108,\n  \"product\": {\n    \"name\": \"Custom Dining Table - Oak Premium\",\n    \"description\": \"8-seater oak dining table with custom finish\"\n  },\n  \"quantity\": 2,\n  \"scheduleStartDate\": \"2025-09-30T09:00:00.000Z\",\n  \"deadline\": \"2025-10-15T17:00:00.000Z\",\n  \"assignedToId\": 26,\n  \"bomUpdates\": [\n    {\n      \"id\": 67,\n      \"productId\": 108,\n      \"quantity\": 6,\n      \"operation\": \"Premium Assembly\",\n      \"opDurationMins\": 75\n    },\n    {\n      \"id\": 70,\n      \"productId\": 108,\n      \"quantity\": 2,\n      \"opDurationMins\": 20\n    }\n  ],\n  \"workOrders\": [\n    {\n      \"operation\": \"Pre-Assembly Setup\",\n      \"status\": \"to_do\",\n      \"durationMins\": 30,\n      \"workCenterId\": 19,\n      \"assignedToId\": 27,\n      \"comments\": \"Prepare all components\"\n    },\n    {\n      \"operation\": \"Main Assembly\",\n      \"status\": \"to_do\",\n      \"durationMins\": 75,\n      \"workCenterId\": 19,\n      \"assignedToId\": 26\n    },\n    {\n      \"operation\": \"Premium Painting\",\n      \"status\": \"to_do\",\n      \"durationMins\": 40,\n      \"workCenterId\": 20,\n      \"assignedToId\": 26\n    },\n    {\n      \"operation\": \"Final Packaging\",\n      \"status\": \"to_do\",\n      \"durationMins\": 25,\n      \"workCenterId\": 21,\n      \"assignedToId\": 27\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('All relations updated correctly', function () {",
+              "    const jsonData = pm.response.json();",
+              "    // Product updated",
+              "    pm.expect(jsonData.data.product.name).to.include('Custom Dining Table');",
+              "    // BOM updated",
+              "    const bom67 = jsonData.data.product.bom.find(b => b.id === 67);",
+              "    pm.expect(bom67.quantity).to.eql(6);",
+              "    pm.expect(bom67.operation).to.eql('Premium Assembly');",
+              "    // Work orders created",
+              "    pm.expect(jsonData.data.workOrders).to.have.lengthOf(4);",
+              "    const setupWO = jsonData.data.workOrders.find(wo => wo.operation === 'Pre-Assembly Setup');",
+              "    pm.expect(setupWO.comments).to.eql('Prepare all components');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Update Existing Draft (Upsert Test)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 160,\n  \"userId\": 25,\n  \"productId\": 109,\n  \"quantity\": 8,\n  \"scheduleStartDate\": \"2025-09-26T08:00:00.000Z\",\n  \"deadline\": \"2025-10-12T17:00:00.000Z\",\n  \"assignedToId\": 27,\n  \"bomUpdates\": [\n    {\n      \"id\": 72,\n      \"productId\": 109,\n      \"quantity\": 5,\n      \"opDurationMins\": 50\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Existing MO updated correctly', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.data.id).to.eql(160);",
+              "    pm.expect(jsonData.data.quantity).to.eql(8);",
+              "    pm.expect(jsonData.data.assignedTo.id).to.eql(27);",
+              "});",
+              "pm.test('BOM updated in existing MO', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const bom72 = jsonData.data.product.bom.find(b => b.id === 72);",
+              "    pm.expect(bom72.quantity).to.eql(5);",
+              "    pm.expect(bom72.opDurationMins).to.eql(50);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7a. Error - Missing Required Fields",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 165,\n  \"userId\": 25,\n  \"quantity\": 3\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test('Error message for missing fields', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.success).to.be.false;",
+              "    pm.expect(jsonData.message).to.include('productId');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7b. Error - Invalid Product ID",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 166,\n  \"userId\": 25,\n  \"productId\": 999,\n  \"quantity\": 2\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "pm.test('Product not found error', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.success).to.be.false;",
+              "    pm.expect(jsonData.message).to.include('Product not found');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7c. Error - Invalid BOM Update",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 167,\n  \"userId\": 25,\n  \"productId\": 109,\n  \"quantity\": 2,\n  \"bomUpdates\": [\n    {\n      \"id\": 67,\n      \"productId\": 108,\n      \"quantity\": 4\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test('BOM validation error', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.success).to.be.false;",
+              "    pm.expect(jsonData.message).to.include('does not belong to product');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7d. Error - Non-existent BOM Entry",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": 168,\n  \"userId\": 25,\n  \"productId\": 109,\n  \"quantity\": 2,\n  \"bomUpdates\": [\n    {\n      \"id\": 999,\n      \"productId\": 109,\n      \"quantity\": 4\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/mo/draft",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "mo", "draft"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "pm.test('BOM not found error', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.success).to.be.false;",
+              "    pm.expect(jsonData.message).to.include('BOM entry with ID 999 not found');",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set unique timestamp for test isolation",
+          "pm.globals.set('timestamp', Date.now());"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "your-jwt-token-here",
+      "type": "string"
+    }
+  ]
+}
