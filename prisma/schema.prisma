@@ -23,7 +23,7 @@ model User {
   assignedWOs   WorkOrder[]          @relation("WOAssigned")
   reports       Report[]
   workCenters  WorkCenter[] 
-  productPresets ProductPresets[]   @relation("ProductPresetsCreatedBy") 
+  moPresets    MOPresets[]          @relation("MOPresetsCreatedBy") 
 }
 
 model Session {
@@ -57,32 +57,37 @@ model Product {
 
   manufacturingOrders ManufacturingOrder[]
   productLedger       ProductLedger[]
+  moPresets           MOPresets[]
 
   // Stock
   stock ProductStock?
 }
 
-model ProductPresets {
+model MOPresets {
   id          Int       @id @default(autoincrement())
   name        String
   description String?
-  unit        String    @default("unit")
+  quantity    Int       @default(1)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   
+  productId   Int
+  product     Product   @relation(fields: [productId], references: [id])
+  
   createdById Int
-  createdBy   User @relation("ProductPresetsCreatedBy", fields: [createdById], references: [id])
+  createdBy   User      @relation("MOPresetsCreatedBy", fields: [createdById], references: [id])
 }
 
 model BillOfMaterial {
-  id          Int      @id @default(autoincrement())
-  productId   Int
-  product     Product  @relation("ProductBOM", fields: [productId], references: [id], onDelete: Cascade)
-  operation   String?  
-  componentId Int
-  component   Product  @relation("ComponentBOM", fields: [componentId], references: [id], onDelete: Cascade)
-  quantity    Float
-  createdAt   DateTime @default(now())
+  id             Int      @id @default(autoincrement())
+  productId      Int
+  product        Product  @relation("ProductBOM", fields: [productId], references: [id], onDelete: Cascade)
+  operation      String?  
+  opDurationMins Int?
+  componentId    Int
+  component      Product  @relation("ComponentBOM", fields: [componentId], references: [id], onDelete: Cascade)
+  quantity       Float
+  createdAt      DateTime @default(now())
 }
 
 model ManufacturingOrder {

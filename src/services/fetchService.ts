@@ -7,6 +7,7 @@ export interface FetchAllResult {
     users: any[];
     sessions: any[];
     products: any[];
+    moPresets: any[];
     billOfMaterials: any[];
     manufacturingOrders: any[];
     workOrders: any[];
@@ -24,6 +25,7 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
       users,
       sessions,
       products,
+      moPresets,
       billOfMaterials,
       manufacturingOrders,
       workOrders,
@@ -65,6 +67,41 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
               productLedger: true,
             },
           },
+        },
+      }),
+      // MOPresets with related product and BoM data
+      prisma.mOPresets.findMany({
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+          product: {
+            include: {
+              bom: {
+                include: {
+                  component: {
+                    select: {
+                      id: true,
+                      name: true,
+                      unit: true,
+                      description: true,
+                    },
+                  },
+                },
+                orderBy: {
+                  id: 'asc',
+                },
+              },
+              stock: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
         },
       }),
       prisma.billOfMaterial.findMany({
@@ -203,6 +240,7 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
         users,
         sessions,
         products,
+        moPresets,
         billOfMaterials,
         manufacturingOrders,
         workOrders,
@@ -266,6 +304,43 @@ export const fetchTableData = async (tableName: string): Promise<any> => {
                 productLedger: true,
               },
             },
+          },
+        });
+        break;
+
+      case 'mopresets':
+        data = await prisma.mOPresets.findMany({
+          include: {
+            createdBy: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+              },
+            },
+            product: {
+              include: {
+                bom: {
+                  include: {
+                    component: {
+                      select: {
+                        id: true,
+                        name: true,
+                        unit: true,
+                        description: true,
+                      },
+                    },
+                  },
+                  orderBy: {
+                    id: 'asc',
+                  },
+                },
+                stock: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
           },
         });
         break;

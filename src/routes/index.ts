@@ -4,7 +4,8 @@ import manufacturingOrderRoutes from "./manufacturingOrderRoutes";
 import fetchRoutes from "./fetchRoutes";
 import workOrderRoutes from "./workOrderRoutes";
 import workCenterRoutes from "./workCenterRoutes";
-import productPresetsRoutes from "./productPresetsRoutes";
+import moPresetsRoutes from "./moPresetsRoutes";
+
 const apiRoutes = Router();
 
 apiRoutes.use("/auth", authRoutes);
@@ -12,5 +13,6 @@ apiRoutes.use("/mo", manufacturingOrderRoutes);
 apiRoutes.use("/fetch", fetchRoutes);
 apiRoutes.use("/wo", workOrderRoutes);
 apiRoutes.use("/workCenters", workCenterRoutes);
-apiRoutes.use("/productPresets", productPresetsRoutes);
+apiRoutes.use("/moPresets", moPresetsRoutes);
+
 export default apiRoutes;
