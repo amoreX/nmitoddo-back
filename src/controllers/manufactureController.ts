@@ -11,13 +11,14 @@ export const NewManufacturingOrder = async (req: Request, res: Response) => {
   }
 
   try {
-    if (result.status) {
-      return res
-        .status(200)
-        .json({ message: result.message, user: result.user });
-    } else {
-      return res.status(401).json({ message: result.message });
-    }
+    // if (result.status) {
+    //   return res
+    //     .status(200)
+    //     .json({ message: result.message, user: result.user });
+    // } else {
+    //   return res.status(401).json({ message: result.message });
+    // }
+    return res.status(500).json({ message: "message" });
   } catch (err: any) {
     return res
       .status(500)
@@ -36,13 +37,7 @@ export const DraftManufacturingOrder = async (req: Request, res: Response) => {
   }
 
   try {
-    if (result.status) {
-      return res
-        .status(200)
-        .json({ message: "Signup successful.", user: result.user });
-    } else {
-      return res.status(409).json({ message: result.message });
-    }
+    return res.status(409).json({ message: "result.message" });
   } catch (err: any) {
     return res
       .status(500)
