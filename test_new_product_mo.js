@@ -14,7 +14,7 @@ async function testNewMO() {
       deadline: '2025-09-30'
     });
 
-    console.log('✅ Successfully created MO with empty product!');
+    console.log('Successfully created MO with empty product!');
     console.log('Response:', JSON.stringify(newMOResponse.data, null, 2));
     
     const createdMO = newMOResponse.data.data;
