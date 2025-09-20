@@ -41,16 +41,44 @@ export const saveDraftManufacturingOrderService = async (
     },
   });
 
-  // Save BOM components if provided
-  if (moData.components && moData.productId) {
-    for (const comp of moData.components) {
-      await prisma.billOfMaterial.create({
-        data: {
-          productId: moData.productId,
-          componentId: comp.componentId,
-          quantity: comp.quantity,
-        },
-      });
+  // Update BOM components if provided
+  if (moData.bomIds && moData.bomIds.length > 0) {
+    for (const bomId of moData.bomIds) {
+      const bomData = moData.components?.find(comp => comp.id === bomId);
+      if (bomData) {
+        await prisma.billOfMaterial.update({
+          where: { id: bomId },
+          data: {
+            componentId: bomData.componentId,
+            quantity: bomData.quantity,
+            ...(bomData.operation !== undefined && { operation: bomData.operation }),
+            ...(bomData.opDurationMins !== undefined && { opDurationMins: bomData.opDurationMins }),
+          },
+        });
+      }
+    }
+  }
+
+  // Update work orders if provided
+  if (moData.workOrderIds && moData.workOrderIds.length > 0) {
+    for (const workOrderId of moData.workOrderIds) {
+      const woData = moData.workOrders?.find(wo => wo.id === workOrderId);
+      if (woData) {
+        await prisma.workOrder.update({
+          where: { id: workOrderId },
+          data: {
+            operation: woData.operation,
+            status: woData.status,
+            durationMins: woData.durationMins,
+            ...(woData.comments !== undefined && { comments: woData.comments }),
+            ...(woData.workCenterId !== undefined && { workCenterId: woData.workCenterId }),
+            ...(woData.assignedToId !== undefined && { assignedToId: woData.assignedToId }),
+            ...(woData.startedAt !== undefined && { startedAt: woData.startedAt }),
+            ...(woData.completedAt !== undefined && { completedAt: woData.completedAt }),
+            ...(woData.durationDoneMins !== undefined && { durationDoneMins: woData.durationDoneMins }),
+          },
+        });
+      }
     }
   }
 
@@ -58,18 +86,24 @@ export const saveDraftManufacturingOrderService = async (
 };
 
 interface ComponentInput {
+  id?: number; // BOM ID for updates
   componentId: number;
   quantity: number;
+  operation?: string;
+  opDurationMins?: number;
 }
 
 interface WorkOrderInput {
+  id?: number; // Work Order ID for updates
   operation: string;
-  status: "draft" | "to_do" | "started" | "paused" | "completed";
+  status: "to_do" | "started" | "paused" | "completed";
   comments?: string;
   workCenterId?: number;
   assignedToId?: number;
   startedAt?: Date;
   completedAt?: Date;
+  durationMins: number;
+  durationDoneMins?: number;
 }
 
 interface MODraftInput {
@@ -82,5 +116,7 @@ interface MODraftInput {
   assignedToId?: number;
   components?: ComponentInput[];
   workOrders?: WorkOrderInput[];
+  bomIds?: number[]; // List of BOM IDs to update
+  workOrderIds?: number[]; // List of Work Order IDs to update
   status: string;
 }

@@ -40,6 +40,7 @@ export const fetchAllData = async (): Promise<FetchAllResult> => {
           name: true,
           email: true,
           loginId: true,
+          // password: true, // Added for testing
           role: true,
           createdAt: true,
           updatedAt: true,
