@@ -1,10 +1,10 @@
-const {
+import {
   PrismaClient,
   Role,
   OrderStatus,
   WorkStatus,
   MovementType,
-} = require("@prisma/client");
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
