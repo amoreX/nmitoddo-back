@@ -257,3 +257,10 @@ CREATE POLICY report_manager_access ON "Report"
         (SELECT role FROM "User" WHERE id::text = current_setting('app.current_user_id', true)) 
         IN ('admin','manager')
     );
+
+-- ===============================
+-- Notes
+-- Your app must set app.current_user_id on each DB session:
+-- SELECT set_config('app.current_user_id', '<user_id>', true);
+-- RLS enforces row-level access in Postgres, independent of Prisma client queries.
+-- This gives full RLS coverage for all main tables in your schema.
