@@ -48,57 +48,30 @@ model Product {
   unit        String    @default("unit")
   createdAt   DateTime  @default(now())
 
-  bomProducts   BillOfMaterial[] @relation("Product")
+  // BOM: components for this product
+  bom          BillOfMaterial[] @relation("ProductBOM") // finished product -> BOM entries
+
+  // Products where this product is used as component
+  usedInBOM    BillOfMaterial[] @relation("ComponentBOM") // this product is component in BOMs
+
   manufacturingOrders ManufacturingOrder[]
-  productLedger ProductLedger[]
+  productLedger       ProductLedger[]
 
-  // Backrelation for ProductStock
-  productStock ProductStock?
-}
-
-model ProductStock {
-  id        Int       @id @default(autoincrement())
-  productId Int       @unique
-  product   Product   @relation(fields: [productId], references: [id])
-  quantity  Float     @default(0)
-  updatedAt DateTime  @updatedAt
-}
-
-model Material {
-  id          Int       @id @default(autoincrement())
-  name        String
-  unit        String    @default("unit")
-  createdAt   DateTime  @default(now())
-
-  bomComponents BillOfMaterial[] @relation("Component")
-  materialLedger MaterialLedger[]
-
-  // Backrelation for MaterialStock
-  materialStock MaterialStock?
-}
-
-model MaterialStock {
-  id        Int       @id @default(autoincrement())
-  materialId Int      @unique
-  material  Material   @relation(fields: [materialId], references: [id])
-  quantity  Float     @default(0)
-  updatedAt DateTime  @updatedAt
+  // Stock
+  stock ProductStock?
 }
 
 
 model BillOfMaterial {
-  id               Int     @id @default(autoincrement())
-  quantity         Float
-  operation        String?
-  estimatedTimeMins Int?
-
+  id          Int      @id @default(autoincrement())
   productId   Int
-  product     Product @relation("Product", fields: [productId], references: [id], onDelete: Cascade)
+  product     Product  @relation("ProductBOM", fields: [productId], references: [id], onDelete: Cascade)
 
   componentId Int
-  component   Material @relation("Component", fields: [componentId], references: [id], onDelete: Cascade)
+  component   Product  @relation("ComponentBOM", fields: [componentId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
+  quantity    Float
+  createdAt   DateTime @default(now())
 }
 
 model ManufacturingOrder {
@@ -182,26 +155,19 @@ model ProductLedger {
   product      Product      @relation(fields: [productId], references: [id])
 }
 
-/// ---------------- MATERIAL LEDGER ----------------
-model MaterialLedger {
-  id           Int          @id @default(autoincrement())
-  movementType MovementType
-  quantity     Float
-  referenceType String?     // e.g., "MO", "WO", "purchase"
-  referenceId   Int?
-  createdAt    DateTime     @default(now())
-
-  materialId   Int
-  material     Material    @relation(fields: [materialId], references: [id])
-}
-
 enum MovementType {
   in
   out
 }
 
 /// ---------------- CURRENT STOCK (CACHED) ----------------
-
+model ProductStock {
+  id        Int       @id @default(autoincrement())
+  productId Int       @unique
+  product   Product   @relation(fields: [productId], references: [id])
+  quantity  Float     @default(0)
+  updatedAt DateTime  @updatedAt
+}
 
 model Report {
   id          Int       @id @default(autoincrement())
@@ -213,12 +179,13 @@ model Report {
   user   User @relation(fields: [userId], references: [id])
 }
 
+
 // // This is your Prisma schema file,
 // // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 // // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+//old schema
 // datasource db {
 //   provider = "postgresql"
 //   url      = env("POSTGRES_URL")
