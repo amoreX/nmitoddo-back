@@ -246,6 +246,18 @@ export const createManufacturingOrderService = async (
 export const saveDraftManufacturingOrderService = async (
   moData: MODraftInput,
 ) => {
+  // Update product if product data is provided
+  if (moData.product && moData.productId) {
+    await prisma.product.update({
+      where: { id: moData.productId },
+      data: {
+        ...(moData.product.name !== undefined && { name: moData.product.name }),
+        ...(moData.product.description !== undefined && { description: moData.product.description }),
+        ...(moData.product.unit !== undefined && { unit: moData.product.unit }),
+      },
+    });
+  }
+
   // Create the manufacturing order
   const mo = await prisma.manufacturingOrder.upsert({
     where: {
@@ -315,7 +327,57 @@ export const saveDraftManufacturingOrderService = async (
     }
   }
 
-  return mo;
+  // Fetch the complete MO with all related data before returning
+  const completeMO = await prisma.manufacturingOrder.findUnique({
+    where: { id: mo.id },
+    include: {
+      product: {
+        include: {
+          bom: {
+            include: {
+              component: {
+                select: {
+                  id: true,
+                  name: true,
+                  unit: true,
+                  description: true,
+                },
+              },
+            },
+          },
+          stock: true,
+        },
+      },
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      assignedTo: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      workOrders: {
+        include: {
+          workCenter: true,
+          assignedTo: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return completeMO || mo;
 };
 
 interface ComponentInput {
@@ -343,6 +405,11 @@ interface MODraftInput {
   id: number;
   createdById: number;
   productId?: number;
+  product?: { // Product field updates
+    name?: string;
+    description?: string;
+    unit?: string;
+  };
   quantity: number;
   scheduleStartDate?: Date;
   deadline?: Date;

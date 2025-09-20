@@ -1,0 +1,125 @@
+{
+  "info": {
+    "name": "Auth API - Update User & Login with Email",
+    "description": "Postman collection for the new auth endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Login with Email",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"alice@example.com\",\n  \"pwd\": \"alice\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/loginWithEmail",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "loginWithEmail"]
+        },
+        "description": "Login using email and password. Returns JWT token for authentication."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Update User - Name Only",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Updated Name\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/user",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "user"]
+        },
+        "description": "Update only the user's name. Requires authentication token."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Update User - Email Only",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"newemail@example.com\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/user",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "user"]
+        },
+        "description": "Update only the user's email. Requires authentication token."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Update User - Both Name & Email",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{authToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"John Doe Updated\",\n  \"email\": \"john.updated@example.com\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/user",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "user"]
+        },
+        "description": "Update both user's name and email. Requires authentication token."
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

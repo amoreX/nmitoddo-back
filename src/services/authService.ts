@@ -218,6 +218,150 @@ export const cleanupExpiredSessions = async (): Promise<void> => {
 };
 
 /**
+ * Update User Service
+ * Updates user name and/or email
+ * Input JSON example:
+ * {
+ *   "name": "New Name",
+ *   "email": "newemail@example.com"
+ * }
+ */
+export const updateUserService = async (
+  userId: number,
+  updates: { name?: string; email?: string }
+): Promise<AuthResponse> => {
+  try {
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!existingUser) {
+      return {
+        status: false,
+        message: "User not found"
+      };
+    }
+
+    // If email is being updated, check if it's already taken
+    if (updates.email && updates.email !== existingUser.email) {
+      const emailExists = await prisma.user.findUnique({
+        where: { email: updates.email }
+      });
+
+      if (emailExists) {
+        return {
+          status: false,
+          message: "Email already exists"
+        };
+      }
+    }
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(updates.name !== undefined && { name: updates.name }),
+        ...(updates.email !== undefined && { email: updates.email }),
+        updatedAt: new Date()
+      }
+    });
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = updatedUser;
+
+    return {
+      status: true,
+      message: "User updated successfully",
+      user: userWithoutPassword
+    };
+  } catch (error) {
+    console.error("Update user error:", error);
+    return {
+      status: false,
+      message: "An error occurred during user update"
+    };
+  }
+};
+
+/**
+ * Login with Email Service
+ * Input JSON example:
+ * {
+ *   "email": "alice@example.com",
+ *   "pwd": "alice"
+ * }
+ */
+export const loginWithEmailService = async (
+  email: string,
+  pwd: string
+): Promise<AuthResponse> => {
+  try {
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
+
+    if (!user) {
+      return {
+        status: false,
+        message: "Invalid email or password"
+      };
+    }
+
+    // Compare password
+    const isPasswordValid = await bcrypt.compare(pwd, user.password);
+
+    if (!isPasswordValid) {
+      return {
+        status: false,
+        message: "Invalid email or password"
+      };
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, loginId: user.loginId, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    // Store session in database
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+
+    try {
+      const session = await prisma.session.create({
+        data: {
+          token,
+          userId: user.id,
+          expiresAt
+        }
+      });
+    } catch (sessionError) {
+      console.error("Failed to create session for email login:", sessionError);
+      // Continue with login even if session creation fails
+    }
+
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user;
+
+    return {
+      status: true,
+      message: token,
+      user: userWithoutPassword,
+      token
+    };
+  } catch (error) {
+    console.error("Login with email error:", error);
+    return {
+      status: false,
+      message: "An error occurred during login"
+    };
+  }
+};
+
+/**
  * Test session creation - for debugging
  */
 export const testSessionCreation = async (): Promise<void> => {
@@ -247,3 +391,5 @@ export const testSessionCreation = async (): Promise<void> => {
 // Legacy functions for backward compatibility (if needed)
 export const loginUser = loginService;
 export const signupUser = signupService;
+export const updateUser = updateUserService;
+export const loginWithEmail = loginWithEmailService;
