@@ -10,12 +10,12 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log("Clearing existing data");
-  await prisma.session.deleteMany();
-  await prisma.workOrder.deleteMany();
-  await prisma.manufacturingOrder.deleteMany();
-  await prisma.stockLedger.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.user.deleteMany();
+  // await prisma.session.deleteMany();
+  // await prisma.workOrder.deleteMany();
+  // await prisma.manufacturingOrder.deleteMany();
+  // await prisma.stockLedger.deleteMany();
+  // await prisma.product.deleteMany();
+  // await prisma.user.deleteMany();
 
   await prisma.user.createMany({
     data: [
@@ -46,46 +46,46 @@ async function main() {
 
   console.log("Users seeded");
 
-  const admin = await prisma.user.findFirst({ where: { role: Role.admin } });
-  const operator = await prisma.user.findFirst({
-    where: { role: Role.operator },
-  });
+  // const admin = await prisma.user.findFirst({ where: { role: Role.admin } });
+  // const operator = await prisma.user.findFirst({
+  //   where: { role: Role.operator },
+  // });
 
-  const product = await prisma.product.create({
-    data: {
-      name: "Steel Rod",
-      description: "High-quality steel rod",
-      unit: "kg",
-    },
-  });
+  // const product = await prisma.product.create({
+  //   data: {
+  //     name: "Steel Rod",
+  //     description: "High-quality steel rod",
+  //     unit: "kg",
+  //   },
+  // });
 
-  const mo = await prisma.manufacturingOrder.create({
-    data: {
-      quantity: 100,
-      status: OrderStatus.planned,
-      productId: product.id,
-      createdById: admin.id,
-      assignedToId: operator.id,
-    },
-  });
+  // const mo = await prisma.manufacturingOrder.create({
+  //   data: {
+  //     quantity: 100,
+  //     status: OrderStatus.planned,
+  //     productId: product.id,
+  //     createdById: admin.id,
+  //     assignedToId: operator.id,
+  //   },
+  // });
 
-  await prisma.workOrder.create({
-    data: {
-      operation: "Cutting",
-      status: WorkStatus.planned,
-      moId: mo.id,
-      assignedToId: operator.id,
-    },
-  });
+  // await prisma.workOrder.create({
+  //   data: {
+  //     operation: "Cutting",
+  //     status: WorkStatus.planned,
+  //     moId: mo.id,
+  //     assignedToId: operator.id,
+  //   },
+  // });
 
-  await prisma.stockLedger.create({
-    data: {
-      movementType: MovementType.in,
-      quantity: 50,
-      productId: product.id,
-      createdById: admin.id,
-    },
-  });
+  // await prisma.stockLedger.create({
+  //   data: {
+  //     movementType: MovementType.in,
+  //     quantity: 50,
+  //     productId: product.id,
+  //     createdById: admin.id,
+  //   },
+  // });
 
   console.log("Seeding finished");
 }
