@@ -1,4 +1,6 @@
-﻿# NMIT Manufacturing ERP Backend
+﻿# Team 32 Video Link
+https://drive.google.com/file/d/15cv9WblQ6jOma_J12xhGa_EY9E2yCqCh/view?usp=sharing
+# NMIT Manufacturing ERP Backend
 
 A comprehensive manufacturing ERP system backend built with Node.js, TypeScript, Express, and Prisma. This system provides complete manufacturing management capabilities including Bill of Materials (BOM), Manufacturing Orders (MO), Work Orders (WO), Stock Management, and comprehensive reporting with PDF generation.
 
