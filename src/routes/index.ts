@@ -9,7 +9,8 @@ import moPresetsRoutes from "./moPresetsRoutes";
 import profileRoutes from "./profileRoutes";
 import stockRoutes from "./stockRoutes";
 import productRoutes from "./productRoutes";
-import reportRoutes from "./reportRoutes";
+// import reportRoutes from "./reportRoutes"; // Commented out due to corrupted controller
+import newReportRoutes from "./newReportRoutes";
 
 const apiRoutes = Router();
 
@@ -24,6 +25,7 @@ apiRoutes.use("/workCenters", workCenterRoutes);
 apiRoutes.use("/moPresets", moPresetsRoutes);
 apiRoutes.use("/stock", stockRoutes); 
 apiRoutes.use("/products", productRoutes); 
-// apiRoutes.use("/reports", reportRoutes); 
+// apiRoutes.use("/reports", reportRoutes);
+apiRoutes.use("/reports", newReportRoutes); 
 
 export default apiRoutes;

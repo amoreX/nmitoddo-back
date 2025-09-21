@@ -1,0 +1,754 @@
+import { Request, Response } from 'express';
+import { PrismaClient, Role, OrderStatus, WorkStatus, MovementType } from '@prisma/client';
+import moment from 'moment';
+import { authMiddleware } from '../middleware/authMiddleware';
+import { PDFService } from '../services/pdfService';
+
+const prisma = new PrismaClient();
+const pdfService = new PDFService();
+
+// Extend Request interface to include user role
+declare global {
+  namespace Express {
+    interface Request {
+      userRole?: Role;
+    }
+  }
+}
+
+// Report types
+type ReportType = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+
+interface ReportParams {
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+interface ReportRequestBody {
+  reportType: ReportType;
+  params?: ReportParams;
+}
+
+interface ReportData {
+  period: {
+    start: Date;
+    end: Date;
+    type: ReportType;
+  };
+  generatedAt: Date;
+  summary: {
+    totalMOs: number;
+    totalWOs: number;
+    totalProducts: number;
+    totalUsers: number;
+  };
+  kpis: {
+    manufacturingOrderSummary: {
+      total: number;
+      draft: number;
+      confirmed: number;
+      in_progress: number;
+      to_close: number;
+      done: number;
+      cancelled: number;
+    };
+    workOrderSummary: {
+      total: number;
+      to_do: number;
+      started: number;
+      paused: number;
+      completed: number;
+    };
+    averageLeadTimes: {
+      averageLeadTimeDays: number;
+    };
+    workOrderCompletionRate: number;
+    productivity: {
+      ordersPerDay: number;
+      completionRate: number;
+    };
+    inventory: {
+      totalMovements: number;
+      inMovements: number;
+      outMovements: number;
+      lowStockItems: number;
+    };
+    costs: {
+      totalWorkCenterCosts: number;
+      averageCostPerOrder: number;
+    };
+  };
+  trends: {
+    daily: Array<{ date: string; orders: number; completed: number }>;
+    monthly: Array<{ month: string; orders: number; completed: number }>;
+  };
+  topProducts: Array<{
+    id: number;
+    name: string;
+    ordersCount: number;
+    totalQuantity: number;
+  }>;
+  delayedOrders: Array<{
+    id: number;
+    productName: string;
+    quantity: number;
+    deadline: Date;
+    daysPastDue: number;
+  }>;
+  stockSummary: Array<{
+    id: number;
+    productName: string;
+    currentStock: number;
+    isLowStock: boolean;
+  }>;
+  workCenterUtilization: Array<{
+    id: number;
+    name: string;
+    totalHours: number;
+    utilizationPercent: number;
+    costPerHour: number;
+    totalCost: number;
+  }>;
+}
+
+/**
+ * Authentication and authorization middleware for reports
+ */
+const reportAuthMiddleware = async (req: Request, res: Response, next: any) => {
+  try {
+    // First apply the standard auth middleware
+    await new Promise<void>((resolve, reject) => {
+      authMiddleware(req, res, (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    // Get user with role from database
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId! },
+      select: { id: true, role: true, name: true, email: true }
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if user has admin or manager role
+    if (user.role !== Role.admin && user.role !== Role.manager) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Only admin and manager roles can generate reports.'
+      });
+    }
+
+    // Attach user role to request
+    req.userRole = user.role;
+    next();
+  } catch (error) {
+    console.error('Report auth middleware error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error during authorization'
+    });
+  }
+};
+
+/**
+ * Calculate date range based on report type and optional params
+ */
+function calculateDateRange(reportType: ReportType, params?: ReportParams): { start: Date; end: Date } {
+  const now = moment();
+  let start: moment.Moment;
+  let end: moment.Moment = now;
+
+  // Use custom date range if provided
+  if (params?.dateFrom && params?.dateTo) {
+    return {
+      start: moment(params.dateFrom).startOf('day').toDate(),
+      end: moment(params.dateTo).endOf('day').toDate()
+    };
+  }
+
+  // Calculate range based on report type
+  switch (reportType) {
+    case 'daily':
+      start = params?.dateFrom ? moment(params.dateFrom) : now.clone().startOf('day');
+      end = params?.dateTo ? moment(params.dateTo) : now.clone().endOf('day');
+      break;
+    case 'weekly':
+      start = now.clone().startOf('week');
+      end = now.clone().endOf('week');
+      break;
+    case 'monthly':
+      start = now.clone().startOf('month');
+      end = now.clone().endOf('month');
+      break;
+    case 'quarterly':
+      start = now.clone().startOf('quarter');
+      end = now.clone().endOf('quarter');
+      break;
+    case 'yearly':
+      start = now.clone().startOf('year');
+      end = now.clone().endOf('year');
+      break;
+    default:
+      throw new Error(`Invalid report type: ${reportType}`);
+  }
+
+  return {
+    start: start.toDate(),
+    end: end.toDate()
+  };
+}
+          error: 'Missing required fields: reportType and userId are required',
+        } as ReportResponse);
+        return;
+      }
+
+      // Validate report type
+      const validReportTypes: ReportType[] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
+      if (!validReportTypes.includes(reportType)) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid report type. Must be one of: ${validReportTypes.join(', ')}`,
+        } as ReportResponse);
+        return;
+      }
+
+      // Validate user exists
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          error: 'User not found',
+        } as ReportResponse);
+        return;
+      }
+
+      // Generate report data
+      console.log(`Generating ${reportType} report for user ${userId}...`);
+      const reportRequest: ReportRequest = { reportType, userId };
+      const reportData = await this.reportService.generateReport(reportRequest);
+
+      // Prepare dataset for BI PDF
+  const dataset = await this.buildDataset(reportData.period.start, reportData.period.end, filters);
+
+      // Save report to database
+      const reportId = await this.reportService.saveReport(reportData, userId);
+
+      // Generate PDF
+      console.log(`Generating PDF for report ${reportId}...`);
+      const pdfOptions: any = { company: { name: 'NMIT' }, dataset };
+      if (filters) pdfOptions.filters = filters;
+      if (user) pdfOptions.user = { id: user.id, name: user.name, email: (user as any).email };
+      const pdfBuffer = await this.pdfService.generatePDF(reportData, pdfOptions);
+      const pdfBase64 = this.pdfService.convertToPDFBase64(pdfBuffer);
+
+      // Send response
+      const response: ReportResponse = {
+        success: true,
+        data: {
+          reportId,
+          reportType,
+          pdfBase64,
+          generatedAt: reportData.generatedAt,
+        },
+        message: `${reportType.charAt(0).toUpperCase() + reportType.slice(1)} report generated successfully`,
+      };
+
+      res.status(200).json(response);
+      console.log(`Report ${reportId} generated successfully for user ${userId}`);
+
+    } catch (error) {
+      console.error('Error generating report:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      res.status(500).json({
+        success: false,
+        error: 'Failed to generate report',
+        message: errorMessage,
+      } as ReportResponse);
+    }
+  }
+
+  /**
+   * Get report history for a user
+   * GET /api/reports/history/:userId
+   */
+  async getReportHistory(req: Request, res: Response): Promise<void> {
+    try {
+      const userIdParam = req.params.userId;
+      if (!userIdParam) {
+        res.status(400).json({
+          success: false,
+          error: 'User ID parameter is required',
+        });
+        return;
+      }
+      
+      const userId = parseInt(userIdParam);
+      
+      if (isNaN(userId)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid user ID',
+        });
+        return;
+      }
+
+      const reports = await this.prisma.report.findMany({
+        where: { userId },
+        orderBy: { generatedAt: 'desc' },
+        take: 50, // Limit to last 50 reports
+        select: {
+          id: true,
+          reportType: true,
+          generatedAt: true,
+          data: false, // Don't include large data field in list
+        },
+      });
+
+      res.status(200).json({
+        success: true,
+        data: reports,
+        message: `Found ${reports.length} reports for user ${userId}`,
+      });
+
+    } catch (error) {
+      console.error('Error fetching report history:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch report history',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  }
+
+  /**
+   * Get a specific report by ID
+   * GET /api/reports/:reportId
+   */
+  async getReport(req: Request, res: Response): Promise<void> {
+    try {
+      const reportIdParam = req.params.reportId;
+      if (!reportIdParam) {
+        res.status(400).json({
+          success: false,
+          error: 'Report ID parameter is required',
+        });
+        return;
+      }
+      
+      const reportId = parseInt(reportIdParam);
+      
+      if (isNaN(reportId)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid report ID',
+        });
+        return;
+      }
+
+      const report = await this.prisma.report.findUnique({
+        where: { id: reportId },
+      });
+
+      if (!report) {
+        res.status(404).json({
+          success: false,
+          error: 'Report not found',
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: report,
+        message: 'Report retrieved successfully',
+      });
+
+    } catch (error) {
+      console.error('Error fetching report:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch report',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  }
+
+  /**
+   * Regenerate PDF for an existing report
+   * POST /api/reports/:reportId/regenerate-pdf
+   */
+  async regeneratePDF(req: Request, res: Response): Promise<void> {
+    try {
+      const reportIdParam = req.params.reportId;
+      if (!reportIdParam) {
+        res.status(400).json({
+          success: false,
+          error: 'Report ID parameter is required',
+        });
+        return;
+      }
+      
+      const reportId = parseInt(reportIdParam);
+      
+      if (isNaN(reportId)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid report ID',
+        });
+        return;
+      }
+
+      const report = await this.prisma.report.findUnique({
+        where: { id: reportId },
+      });
+
+      if (!report) {
+        res.status(404).json({
+          success: false,
+          error: 'Report not found',
+        });
+        return;
+      }
+
+      // Generate PDF from stored report data + fresh dataset (current DB state)
+      const reportData = report.data as any;
+      const user = await this.prisma.user.findUnique({ where: { id: report.userId } });
+      const dataset = await this.buildDataset(reportData.period.start, reportData.period.end);
+      const pdfOptions: any = { company: { name: 'NMIT' }, dataset };
+      if (user) pdfOptions.user = { id: user.id, name: user.name, email: (user as any).email };
+      const pdfBuffer = await this.pdfService.generatePDF(reportData, pdfOptions);
+      const pdfBase64 = this.pdfService.convertToPDFBase64(pdfBuffer);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          reportId,
+          reportType: report.reportType,
+          pdfBase64,
+          generatedAt: report.generatedAt.toISOString(),
+        },
+        message: 'PDF regenerated successfully',
+      } as ReportResponse);
+
+    } catch (error) {
+      console.error('Error regenerating PDF:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Failed to regenerate PDF',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  }
+
+  /**
+   * Delete a report
+   * DELETE /api/reports/:reportId
+   */
+  async deleteReport(req: Request, res: Response): Promise<void> {
+    try {
+      const reportIdParam = req.params.reportId;
+      if (!reportIdParam) {
+        res.status(400).json({
+          success: false,
+          error: 'Report ID parameter is required',
+        });
+        return;
+      }
+      
+      const reportId = parseInt(reportIdParam);
+      
+      if (isNaN(reportId)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid report ID',
+        });
+        return;
+      }
+
+      const report = await this.prisma.report.findUnique({
+        where: { id: reportId },
+      });
+
+      if (!report) {
+        res.status(404).json({
+          success: false,
+          error: 'Report not found',
+        });
+        return;
+      }
+
+      await this.prisma.report.delete({
+        where: { id: reportId },
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Report deleted successfully',
+      });
+
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete report',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  }
+
+  /**
+   * Generate report and return PDF directly (not Base64)
+   * POST /api/reports/generate-direct-pdf
+   */
+  async generateDirectPDF(req: Request, res: Response): Promise<void> {
+    try {
+      // Validate request body
+  const { reportType, userId, filters } = req.body as ReportGenerationRequest;
+      
+      if (!reportType || !userId) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required fields: reportType and userId are required',
+        });
+        return;
+      }
+
+      // Validate report type
+      const validReportTypes: ReportType[] = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'];
+      if (!validReportTypes.includes(reportType)) {
+        res.status(400).json({
+          success: false,
+          error: `Invalid report type. Must be one of: ${validReportTypes.join(', ')}`,
+        });
+        return;
+      }
+
+      // Validate user exists
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+        return;
+      }
+
+      // Generate report data
+      console.log(`Generating ${reportType} report for user ${userId}...`);
+      const reportRequest: ReportRequest = { reportType, userId };
+      const reportData = await this.reportService.generateReport(reportRequest);
+
+      // Save report to database
+      const reportId = await this.reportService.saveReport(reportData, userId);
+
+      // Generate PDF
+      console.log(`Generating PDF for report ${reportId}...`);
+      const dataset = await this.buildDataset(reportData.period.start, reportData.period.end, filters);
+      const pdfOptions: any = { company: { name: 'NMIT' }, dataset };
+      if (filters) pdfOptions.filters = filters;
+      pdfOptions.user = { id: user.id, name: user.name, email: (user as any).email };
+      const pdfBuffer = await this.pdfService.generatePDF(reportData, pdfOptions);
+
+      // Set headers for PDF download
+      const filename = `${reportType}-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      // Send PDF buffer directly
+      res.status(200).send(pdfBuffer);
+      console.log(`Report ${reportId} generated and sent as direct PDF for user ${userId}`);
+
+    } catch (error) {
+      console.error('Error generating direct PDF:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      res.status(500).json({
+        success: false,
+        error: 'Failed to generate direct PDF',
+        message: errorMessage,
+      });
+    }
+  }
+
+  /**
+   * Download PDF for existing report directly
+   * GET /api/reports/:reportId/download-pdf
+   */
+  async downloadPDF(req: Request, res: Response): Promise<void> {
+    try {
+      const reportIdParam = req.params.reportId;
+      if (!reportIdParam) {
+        res.status(400).json({
+          success: false,
+          error: 'Report ID parameter is required',
+        });
+        return;
+      }
+      
+      const reportId = parseInt(reportIdParam);
+      
+      if (isNaN(reportId)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid report ID',
+        });
+        return;
+      }
+
+      const report = await this.prisma.report.findUnique({
+        where: { id: reportId },
+      });
+
+      if (!report) {
+        res.status(404).json({
+          success: false,
+          error: 'Report not found',
+        });
+        return;
+      }
+
+      // Generate PDF from stored report data
+      const reportData = report.data as any;
+      const pdfBuffer = await this.pdfService.generatePDF(reportData);
+
+      // Set headers for PDF download
+      const filename = `${report.reportType}-report-${reportId}-${new Date(report.generatedAt).toISOString().split('T')[0]}.pdf`;
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      // Send PDF buffer directly
+      res.status(200).send(pdfBuffer);
+      console.log(`PDF downloaded directly for report ${reportId}`);
+
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Failed to download PDF',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  }
+
+  /**
+   * Get available report types
+   * GET /api/reports/types
+   */
+  async getReportTypes(req: Request, res: Response): Promise<void> {
+    try {
+      const reportTypes: { type: ReportType; description: string }[] = [
+        { type: 'daily', description: 'Daily operations report with new MOs, WO activity, stock movements, and exceptions' },
+        { type: 'weekly', description: 'Weekly performance report with MO status, WO completion rates, and work center utilization' },
+        { type: 'monthly', description: 'Monthly analysis with lead times, productivity metrics, and cost analysis' },
+        { type: 'quarterly', description: 'Quarterly review with trends, capacity analysis, and BOM variances' },
+        { type: 'yearly', description: 'Annual summary with total output, efficiency metrics, and strategic KPIs' },
+      ];
+
+      res.status(200).json({
+        success: true,
+        data: reportTypes,
+        message: 'Report types retrieved successfully',
+      });
+
+    } catch (error) {
+      console.error('Error fetching report types:', error);
+      
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch report types',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  }
+  private async buildDataset(startISO: string, endISO: string, filters?: { start?: string; end?: string; productId?: number; moId?: number }): Promise<any> {
+    const start = new Date(filters?.start || startISO);
+    const end = new Date(filters?.end || endISO);
+
+    const orders = await this.prisma.manufacturingOrder.findMany({
+      where: {
+        AND: [
+          { createdAt: { gte: start, lte: end } },
+          filters?.productId ? { productId: filters.productId } : {},
+          filters?.moId ? { id: filters.moId } : {},
+        ],
+      },
+      include: {
+        product: true,
+        assignedTo: { select: { id: true, name: true } },
+        workOrders: {
+          include: {
+            workCenter: true,
+            assignedTo: { select: { id: true, name: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    const workCenters = await this.prisma.workCenter.findMany({
+      include: {
+        workOrders: {
+          where: {
+            OR: [
+              { createdAt: { gte: start, lte: end } },
+              { startedAt: { gte: start, lte: end } },
+              { completedAt: { gte: start, lte: end } },
+            ],
+          },
+        },
+      },
+    });
+
+    const ledger = await this.prisma.productLedger.findMany({
+      where: { createdAt: { gte: start, lte: end } },
+      include: { product: true },
+      orderBy: { createdAt: 'desc' },
+      take: 500,
+    });
+
+    const stocksRaw = await this.prisma.productStock.findMany({ include: { product: true } });
+    const stocks = stocksRaw.map((s: any) => ({ product: s.product, quantity: s.quantity }));
+
+    const productIds = Array.from(new Set(orders.map((o: any) => o.productId).filter(Boolean))) as number[];
+    const bomArgs: any = { include: { product: true, component: true } };
+    if (productIds.length) bomArgs.where = { productId: { in: productIds } };
+    const bomEntries = await this.prisma.billOfMaterial.findMany(bomArgs);
+    const bomMap = new Map<number, { product: any; components: any[] }>();
+    for (const b of bomEntries as any[]) {
+      const entry = bomMap.get(b.productId) || { product: b.product, components: [] as any[] };
+      entry.components.push({ component: b.component, quantity: b.quantity, operation: b.operation, opDurationMins: b.opDurationMins });
+      bomMap.set(b.productId, entry);
+    }
+
+    const bom = Array.from(bomMap.values());
+    return { orders, workCenters, ledger, stocks, bom };
+  }
+}

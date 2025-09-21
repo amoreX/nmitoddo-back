@@ -1,0 +1,264 @@
+{
+  "info": {
+    "name": "Manufacturing Report Generation Tests",
+    "description": "Test suite for the new enhanced report generation API endpoint",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Generate Daily Report",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN_HERE",
+            "type": "text",
+            "description": "Replace with actual JWT token from admin/manager user"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reportType\": \"daily\",\n  \"params\": {\n    \"dateFrom\": \"2024-01-01\",\n    \"dateTo\": \"2024-01-31\"\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/reports/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "reports",
+            "generate"
+          ]
+        },
+        "description": "Generate a daily manufacturing report with custom date range. This will return a PDF file for download."
+      }
+    },
+    {
+      "name": "Generate Weekly Report",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN_HERE",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reportType\": \"weekly\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/reports/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "reports",
+            "generate"
+          ]
+        },
+        "description": "Generate a weekly manufacturing report for current week"
+      }
+    },
+    {
+      "name": "Generate Monthly Report",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN_HERE",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reportType\": \"monthly\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/reports/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "reports",
+            "generate"
+          ]
+        },
+        "description": "Generate a monthly manufacturing report for current month"
+      }
+    },
+    {
+      "name": "Generate Quarterly Report",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN_HERE",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reportType\": \"quarterly\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/reports/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "reports",
+            "generate"
+          ]
+        },
+        "description": "Generate a quarterly manufacturing report for current quarter"
+      }
+    },
+    {
+      "name": "Generate Yearly Report",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN_HERE",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reportType\": \"yearly\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/reports/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "reports",
+            "generate"
+          ]
+        },
+        "description": "Generate a yearly manufacturing report for current year"
+      }
+    },
+    {
+      "name": "Test Invalid Report Type",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer YOUR_TOKEN_HERE",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reportType\": \"invalid\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/reports/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "reports",
+            "generate"
+          ]
+        },
+        "description": "Test error handling for invalid report type"
+      }
+    },
+    {
+      "name": "Test Unauthorized Access",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reportType\": \"daily\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/api/reports/generate",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "3000",
+          "path": [
+            "api",
+            "reports",
+            "generate"
+          ]
+        },
+        "description": "Test authentication - should return 401 unauthorized"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    }
+  ]
+}
