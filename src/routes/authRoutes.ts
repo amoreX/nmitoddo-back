@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { loginController, signupController, testSessionController, updateUserController, loginWithEmailController } from "../controllers/authController";
+import { loginController, signupController, testSessionController, updateUserController, loginWithEmailController, updateRoleController } from "../controllers/authController";
 import { authMiddleware } from "../middleware/authMiddleware";
 
 const authRoutes = Router();
@@ -19,6 +19,10 @@ authRoutes.post("/loginWithEmail", loginWithEmailController);
 // PUT /auth/user - Update user information (protected route)
 // Expected input: { name?: string, email?: string }
 authRoutes.put("/user", authMiddleware, updateUserController);
+
+// PUT /auth/updateRole - Update user role (admin only)
+// Expected input: { updateUserId: number, newRole: string }
+authRoutes.put("/updateRole", updateRoleController);
 
 // GET /auth/test-session - Test session creation (debugging)
 authRoutes.get("/test-session", testSessionController);

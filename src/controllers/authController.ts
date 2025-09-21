@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { signupService, loginService, testSessionCreation, updateUserService, loginWithEmailService } from "../services/authService";
+import { signupService, loginService, testSessionCreation, updateUserService, loginWithEmailService, updateRoleService } from "../services/authService";
 
 /**
  * Signup Controller
@@ -243,6 +243,111 @@ export const testSessionController = async (req: Request, res: Response) => {
     res.status(500).json({ 
       success: false,
       message: "Session test failed: " + error.message 
+    });
+  }
+};
+
+/**
+ * Update User Role Controller
+ * Expected input JSON:
+ * {
+ *   "updateUserId": 123,
+ *   "newRole": "manager"
+ * }
+ */
+export const updateRoleController = async (req: Request, res: Response) => {
+  try {
+    // Extract Bearer token from Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        message: "Access denied. No token provided."
+      });
+    }
+
+    // Check if the header starts with "Bearer "
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Access denied. Invalid token format. Use 'Bearer <token>'"
+      });
+    }
+
+    // Extract the token (remove "Bearer " prefix)
+    const token = authHeader.substring(7);
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "Access denied. No token provided."
+      });
+    }
+
+    // Extract updateUserId and newRole from request body
+    const { updateUserId, newRole } = req.body;
+
+    // Validate required fields
+    if (!updateUserId || !newRole) {
+      return res.status(400).json({
+        success: false,
+        message: "updateUserId and newRole are required."
+      });
+    }
+
+    // Validate updateUserId is a number
+    if (typeof updateUserId !== 'number' || updateUserId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "updateUserId must be a positive number."
+      });
+    }
+
+    // Validate newRole is a string
+    if (typeof newRole !== 'string' || newRole.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "newRole must be a non-empty string."
+      });
+    }
+
+    // Call the service
+    const result = await updateRoleService(token, updateUserId, newRole.trim());
+
+    if (result.status) {
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        user: result.user
+      });
+    } else {
+      // Determine appropriate status code based on error message
+      let statusCode = 500; // Default to internal server error
+      
+      if (result.message.includes("Invalid or expired session") || 
+          result.message.includes("Session has expired")) {
+        statusCode = 401; // Unauthorized
+      } else if (result.message.includes("Access denied") || 
+                 result.message.includes("Admin role required")) {
+        statusCode = 403; // Forbidden
+      } else if (result.message.includes("not found")) {
+        statusCode = 404; // Not Found
+      } else if (result.message.includes("Invalid role")) {
+        statusCode = 400; // Bad Request
+      }
+
+      return res.status(statusCode).json({
+        success: false,
+        message: result.message
+      });
+    }
+
+  } catch (error: any) {
+    console.error("UpdateRole controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error occurred while updating user role."
     });
   }
 };

@@ -18,7 +18,7 @@ export const createManufacturingOrder = async (req: Request, res: Response) => {
     const { userId, quantity, scheduleStartDate, deadline } = req.body;
     
     // Use userId from body, or fallback to authenticated user ID, or default to 10
-    const createdById = userId || req.userId || 10;
+    const createdById = userId || req.userId;
 
     // Always create a new empty product and attach it to the MO
     const mo = await createManufacturingOrderService(

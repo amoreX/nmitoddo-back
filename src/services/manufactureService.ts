@@ -166,7 +166,8 @@ export const createManufacturingOrderService = async (
   productData?: { name: string; description?: string; unit?: string },
   quantity?: number,
   scheduleStartDate?: string,
-  deadline?: string
+  deadline?: string,
+  assignedToId?: number | null
 ) => {
   let finalProductId = productId;
 
@@ -185,7 +186,8 @@ export const createManufacturingOrderService = async (
   const createData: any = { 
     status: OrderStatus.draft, 
     createdById,
-    productId: finalProductId
+    productId: finalProductId,
+    assignedToId: assignedToId || null
   };
   
   if (quantity !== undefined) createData.quantity = quantity;
